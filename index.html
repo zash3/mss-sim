@@ -1,0 +1,1273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Interactive walkthrough: diagnose a late nightly BI refresh on the Meridian Retail Holdings estate (bisim lab 07).">
+<title>MSS Sim — interactive walkthrough</title>
+<style>
+:root{
+  --rail:#0b0d12; --rail-2:#151922; --rail-ink:#8b95a5;
+  --accent:#0078D4; --accent-d:#106EBE; --accent-wash:#e5f1fb; --accent-ink:#005a9e; --on-accent:#fff;
+  --paper:#fff; --canvas:#f5f7f9; --ink:#161a20; --ink-2:#5b6672; --ink-3:#7d8793;
+  --line:#e6e9ee; --line-2:#d4dae1; --bg-2:#f2f4f7;
+  --ok:#17a67a; --ok-wash:#e2f6ef; --warn:#b7791f; --warn-wash:#fdf3dc; --danger:#d13438; --danger-wash:#fdeaea;
+  --c1:#0078D4; --c2:#d13438; --c3:#21b6b0; --c4:#e8a33d; --c5:#7b61c9; --c6:#8d97a3;
+  --r:8px; --rs:6px;
+  --mono:ui-monospace,SFMono-Regular,"Cascadia Mono",Consolas,Menlo,monospace;
+  --shadow:0 1px 2px rgba(16,24,40,.05), 0 1px 3px rgba(16,24,40,.06);
+  --shadow-l:0 12px 34px rgba(16,24,40,.16);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--canvas);color:var(--ink);
+  font:400 14px/1.5 "Inter","Segoe UI",ui-sans-serif,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;overflow:hidden}
+button{font:inherit;color:inherit}
+input,select,textarea{font:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.vh{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0)}
+code,.mono{font-family:var(--mono);font-size:12.5px}
+
+/* ---------- shell ---------- */
+.app{display:grid;grid-template-columns:64px minmax(0,1fr);height:100vh;overflow:hidden}
+.rail{background:var(--rail);display:flex;flex-direction:column;align-items:center;padding:14px 0;gap:6px}
+.rail .logo{width:40px;height:40px;display:grid;place-items:center;margin-bottom:14px}
+.rail button.nav{width:38px;height:38px;border-radius:9px;border:0;background:transparent;
+  color:var(--rail-ink);display:grid;place-items:center;cursor:pointer;position:relative}
+.rail button.nav:hover{background:var(--rail-2);color:#fff}
+.rail button.nav.on{background:var(--rail-2);color:#6cb8f6}
+.rail .spacer{flex:1}
+.rail .tip{position:absolute;left:52px;white-space:nowrap;background:#1e242e;color:#fff;
+  font-size:12px;padding:5px 9px;border-radius:5px;opacity:0;pointer-events:none;transition:opacity .12s;z-index:60}
+.rail button.nav:hover .tip,.rail button.nav:focus-visible .tip{opacity:1}
+
+.main{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--paper)}
+.topbar{height:60px;flex:0 0 60px;border-bottom:1px solid var(--line);display:flex;
+  align-items:center;gap:10px;padding:0 18px;min-width:0}
+.crumbs{display:flex;align-items:center;gap:8px;min-width:0;overflow:hidden}
+.crumbs a{color:var(--ink-2);text-decoration:none;cursor:pointer;white-space:nowrap;display:inline-flex}
+.crumbs a:hover{color:var(--ink)}
+.crumbs .sep{color:var(--ink-3);display:inline-flex}
+.crumbs .now{background:var(--accent-wash);color:var(--accent-ink);font-weight:600;
+  padding:5px 11px;border-radius:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar .end{margin-left:auto;display:flex;align-items:center;gap:10px;color:var(--ink-3);flex:0 0 auto}
+.iconbtn{background:none;border:0;padding:6px;color:var(--ink-3);cursor:pointer;display:inline-flex;border-radius:6px;transition:.15s}
+.iconbtn:hover{color:var(--ink);background:var(--bg-2)}
+.avatar{width:32px;height:32px;border-radius:999px;background:#e9edf1;display:grid;place-items:center;color:var(--ink-3)}
+
+.screen{flex:1 1 0;min-height:0;overflow-y:auto;overflow-x:hidden;padding:26px 30px 110px}
+h1.title{font-size:24px;font-weight:650;margin:0 0 4px;letter-spacing:-.01em}
+h1.title:focus{outline:none}
+h2.sec{font-size:15px;font-weight:650;margin:0 0 10px}
+p.sub{color:var(--ink-2);margin:0 0 22px;max-width:820px}
+
+/* ---------- generic bits ---------- */
+.btn{border:1px solid var(--line-2);background:#fff;padding:9px 16px;border-radius:var(--rs);
+  cursor:pointer;font-weight:500;display:inline-flex;align-items:center;gap:8px;transition:.14s}
+.btn:hover{border-color:var(--ink-3)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600}
+.btn.primary:hover{background:var(--accent-d);border-color:var(--accent-d)}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--ink-2)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.sm{padding:6px 12px;font-size:13px}
+.field{display:block;margin-bottom:16px}
+.field > label,.field > .lb{display:block;font-weight:500;margin-bottom:7px;font-size:13px;color:var(--ink-2)}
+.input{width:100%;border:1px solid var(--line-2);border-radius:var(--rs);
+  padding:10px 12px;background:#fff;color:var(--ink);outline:none;transition:.14s}
+.input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-wash)}
+.input::placeholder{color:#9aa3ad}
+.input[aria-invalid="true"]{border-color:var(--danger)}
+select.input{cursor:pointer;-webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238d97a3' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 11px center;padding-right:34px}
+.card{border:1px solid var(--line);border-radius:var(--r);background:#fff;box-shadow:var(--shadow);min-width:0}
+.card .ch{padding:13px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.card .ch b{font-size:13.5px}
+.card .cb{padding:16px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;
+  padding:3px 10px;border-radius:999px;background:var(--accent-wash);color:var(--accent-ink);white-space:nowrap}
+.chip.grey{background:#eef1f4;color:var(--ink-2)}
+.chip.ok{background:var(--ok-wash);color:var(--ok)}
+.chip.warn{background:var(--warn-wash);color:var(--warn)}
+.chip.bad{background:var(--danger-wash);color:var(--danger)}
+.tbl{overflow:auto;max-width:100%}
+.tbl.tall{max-height:360px}
+table.grid{width:100%;border-collapse:collapse}
+table.grid th{text-align:left;font-weight:600;font-size:13px;color:var(--ink-2);position:sticky;top:0;z-index:1;
+  padding:10px 14px;border-bottom:1px solid var(--line);background:#fafbfc;white-space:nowrap}
+table.grid td{padding:10px 14px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.grid tr:last-child td{border-bottom:0}
+table.grid tbody tr:hover{background:#fafbfc}
+table.grid tr.hl td{background:var(--danger-wash)}
+table.grid td.empty{white-space:normal}
+.num{font-variant-numeric:tabular-nums}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.two{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:20px;align-items:start}
+.halves{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media(max-width:1000px){.two,.halves{grid-template-columns:minmax(0,1fr)}}
+.empty{color:var(--ink-3);text-align:center;padding:36px 10px;font-size:13px}
+.note{color:var(--ink-3);font-size:12.5px;margin:10px 0 0}
+blockquote{margin:0 0 16px;padding:12px 16px;border-left:3px solid var(--accent);background:#f7fafd;color:var(--ink-2);border-radius:0 6px 6px 0}
+.facts{margin:0;padding:0;list-style:none}
+.facts li{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
+.facts li:last-child{border-bottom:0}
+.facts li span{color:var(--ink-3)}
+
+/* ---------- stepper ---------- */
+.stepper{display:flex;align-items:flex-start;margin:0 0 24px;max-width:860px}
+.stepper .st{flex:1;text-align:center;position:relative;color:var(--ink-3);font-size:12.5px;font-weight:500;
+  background:none;border:0;padding:0;min-width:0}
+.stepper .st .bul{width:22px;height:22px;border-radius:999px;border:2px solid var(--line-2);
+  background:#fff;margin:0 auto 8px;display:grid;place-items:center;position:relative;z-index:2;transition:.2s}
+.stepper .st:not(:last-child):after{content:"";position:absolute;top:10px;left:50%;right:-50%;
+  height:2px;background:var(--line-2);z-index:1}
+.stepper .st.done .bul{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.stepper .st.done:not(:last-child):after{background:var(--accent)}
+.stepper .st.on .bul{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-wash)}
+.stepper .st.on .bul:before{content:"";width:8px;height:8px;border-radius:999px;background:var(--accent)}
+.stepper .st.on,.stepper .st.done{color:var(--ink)}
+.stepper button.st{cursor:pointer}
+.stepper button.st:hover{color:var(--accent-d)}
+.stepper .lbl{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px}
+
+/* ---------- KPI tiles ---------- */
+.kpi{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:16px}
+.kpi .k{border:1px solid var(--line);border-radius:var(--r);background:#fff;padding:14px 16px;box-shadow:var(--shadow);min-width:0}
+.kpi .k .lb{font-size:12px;color:var(--ink-3);font-weight:600;letter-spacing:.02em;margin-bottom:6px}
+.kpi .k .vl{font-size:24px;font-weight:650;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kpi .k .dl{font-size:12px;color:var(--ink-3);margin-top:3px}
+.kpi .k.bad .vl{color:var(--danger)}
+.kpi .k.ok .vl{color:var(--ok)}
+@media(max-width:900px){.kpi{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* ---------- filter bar ---------- */
+.filterbar{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px}
+.filterbar .field{margin:0;min-width:170px}
+.check{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;padding:10px 0}
+.check input{width:16px;height:16px;accent-color:var(--accent);margin:0}
+
+/* ---------- SSMS query window ---------- */
+.ssms{display:grid;grid-template-columns:230px minmax(0,1fr);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:#fff;box-shadow:var(--shadow)}
+@media(max-width:900px){
+  .ssms{grid-template-columns:minmax(0,1fr)}
+  .oe{border-right:0;border-bottom:1px solid var(--line)}
+  .oe ul{display:flex;flex-wrap:wrap;gap:4px;padding:8px}
+  .oe li:not(.l4){display:none}
+  .oe li.l4{padding:0}
+}
+.oe{border-right:1px solid var(--line);background:#fafbfc;font-size:13px;min-width:0}
+.oe .oh{padding:9px 12px;font-weight:600;border-bottom:1px solid var(--line);font-size:12px;color:var(--ink-2)}
+.oe ul{list-style:none;margin:0;padding:6px 0}
+.oe li{padding:3px 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;color:var(--ink-2)}
+.oe li.l2{padding-left:26px}.oe li.l3{padding-left:40px}.oe li.l4{padding-left:54px}
+.oe button.tbl-item{background:none;border:0;padding:2px 4px;border-radius:4px;cursor:pointer;color:var(--ink);font-family:var(--mono);font-size:12px;text-align:left;overflow:hidden;text-overflow:ellipsis}
+.oe button.tbl-item:hover{background:var(--accent-wash);color:var(--accent-ink)}
+.qwin{display:flex;flex-direction:column;min-width:0}
+.qbar{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.qbar select.input{width:auto;min-width:0;max-width:100%;padding:6px 32px 6px 10px;font-size:13px}
+.editor{width:100%;min-height:190px;border:0;border-bottom:1px solid var(--line);resize:vertical;padding:12px 14px;
+  font-family:var(--mono);font-size:12.5px;line-height:1.6;color:#1f2a37;background:#fff;outline:none;tab-size:4;white-space:pre;overflow:auto}
+.editor:focus{box-shadow:inset 0 0 0 2px var(--accent-wash)}
+.rtabs{display:flex;gap:2px;padding:6px 10px 0;border-bottom:1px solid var(--line);background:#fafbfc}
+.rtabs button{border:1px solid transparent;border-bottom:0;background:none;padding:6px 12px;cursor:pointer;font-size:13px;border-radius:6px 6px 0 0;color:var(--ink-2)}
+.rtabs button[aria-selected="true"]{background:#fff;border-color:var(--line);color:var(--ink);font-weight:600;margin-bottom:-1px}
+.rpane{min-height:120px;max-height:300px;overflow:auto}
+.rpane table.grid td,.rpane table.grid th{font-size:12.5px;padding:7px 12px}
+.rpane table.grid td{font-family:var(--mono);font-size:12px}
+.msgs{font-family:var(--mono);font-size:12.5px;padding:12px 14px;white-space:pre-wrap;margin:0;color:var(--ink)}
+.msgs .err{color:var(--danger)}
+.status{display:flex;gap:14px;align-items:center;padding:5px 12px;background:#fff4ce;border-top:1px solid #f0dc8c;font-size:12px;color:#5c4a00;flex-wrap:wrap}
+.status.err{background:#fde7e9;border-top-color:#f1b8bd;color:#8a1c22}
+.status span{white-space:nowrap}
+.status .sp{margin-left:auto}
+
+/* ---------- diagnose ---------- */
+.causes{max-height:420px;overflow:auto}
+.cause{display:flex;gap:11px;align-items:flex-start;padding:10px 16px;border-bottom:1px solid var(--line);cursor:pointer}
+.cause:last-child{border-bottom:0}
+.cause:hover{background:#fafbfc}
+.cause.on{background:var(--accent-wash)}
+.cause input{margin:3px 0 0;width:16px;height:16px;accent-color:var(--accent);flex:0 0 16px}
+.cause code{display:block;color:var(--ink);font-weight:600}
+.cause span{color:var(--ink-2);font-size:13px}
+.verdict{border-radius:var(--r);padding:12px 14px;margin-top:14px;font-size:13.5px;border:1px solid}
+.verdict.ok{background:var(--ok-wash);border-color:#b7e4d3;color:#0d6b4f}
+.verdict.warn{background:var(--warn-wash);border-color:#f0d9a2;color:#7a5410}
+.verdict.bad{background:var(--danger-wash);border-color:#f4c2c3;color:#9b1f23}
+.evid{list-style:none;margin:0;padding:0}
+.evid li{display:flex;gap:10px;align-items:flex-start;padding:8px 0;font-size:13px;border-bottom:1px solid var(--line)}
+.evid li:last-child{border-bottom:0}
+.evid .dot{width:18px;height:18px;border-radius:999px;display:grid;place-items:center;flex:0 0 18px;background:#eef1f4;color:var(--ink-3)}
+.evid li.got .dot{background:var(--ok);color:#fff}
+.evid li:not(.got){color:var(--ink-3)}
+ol.chain{margin:0;padding-left:20px}
+ol.chain li{margin-bottom:8px}
+
+/* charts */
+svg.chart{display:block;width:100%;height:auto;overflow:visible}
+svg.chart text{font-size:10.5px;fill:var(--ink-3)}
+svg.chart .axl{stroke:var(--line);stroke-width:1}
+svg.chart .ref{stroke:var(--danger);stroke-width:1.3;stroke-dasharray:5 4}
+svg.chart .reft{fill:var(--danger);font-weight:600}
+svg.chart .mark{stroke:var(--ink-3);stroke-width:1;stroke-dasharray:3 3}
+svg.chart .bar{transition:opacity .15s}
+svg.chart .bar:hover{opacity:.75}
+svg.chart .lgd{font-size:11px;fill:var(--ink-2)}
+.tt{position:fixed;z-index:200;background:#1e242e;color:#fff;font-size:12px;padding:6px 9px;
+  border-radius:5px;pointer-events:none;opacity:0;transition:opacity .1s;white-space:nowrap}
+.tt.on{opacity:1}
+
+/* ---------- coach ---------- */
+.coach{position:fixed;left:50%;transform:translateX(-50%);bottom:20px;z-index:120;
+  background:#12161c;color:#fff;border-radius:12px;box-shadow:var(--shadow-l);
+  display:flex;align-items:center;gap:14px;padding:12px 14px 12px 18px;width:max-content;max-width:min(780px,94vw)}
+.coach .step{font-size:11px;font-weight:700;letter-spacing:.12em;color:#6cb8f6;text-transform:uppercase}
+.coach .txt{font-size:13.5px;line-height:1.45;color:#dfe5ec}
+.coach .txt b,.coach .txt code{color:#fff}
+.coach .acts{margin-left:auto;display:flex;gap:8px;align-items:center;flex:0 0 auto}
+.coach button{border-radius:7px;border:1px solid #2b323d;background:#1b212a;color:#dfe5ec;
+  padding:7px 13px;cursor:pointer;font-size:13px;white-space:nowrap}
+.coach button:hover{background:#232a35}
+.coach button.go{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600}
+.coach button.go:hover{background:var(--accent-d)}
+.coach.hide{display:none}
+.guidebtn{position:fixed;right:20px;bottom:20px;z-index:120;border:0;border-radius:999px;
+  background:#12161c;color:#fff;padding:11px 18px;cursor:pointer;font-size:13.5px;box-shadow:var(--shadow-l)}
+.guidebtn:hover{background:#1b212a}
+.pulse{position:relative;z-index:2}
+.pulse:after{content:"";position:absolute;inset:-5px;border-radius:11px;pointer-events:none;
+  box-shadow:0 0 0 2px var(--accent);animation:pl 1.7s ease-out infinite}
+@keyframes pl{0%{opacity:.95;transform:scale(1)}70%{opacity:0;transform:scale(1.045)}100%{opacity:0}}
+
+/* ---------- toast + modal ---------- */
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:104px;z-index:300;
+  background:#12161c;color:#fff;padding:11px 17px;border-radius:9px;font-size:13.5px;max-width:min(560px,92vw);
+  box-shadow:var(--shadow-l);opacity:0;transition:opacity .2s,transform .2s;pointer-events:none}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(-6px)}
+.toast.err{background:#8a1c22}
+.modal{position:fixed;inset:0;z-index:250;background:rgba(12,16,22,.45);display:none;
+  align-items:center;justify-content:center;padding:24px}
+.modal.on{display:flex}
+.modal .box{background:#fff;border-radius:12px;box-shadow:var(--shadow-l);width:min(560px,100%);
+  max-height:min(88vh,760px);display:flex;flex-direction:column;overflow:hidden}
+.modal .mh{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.modal .mb{padding:6px 0;overflow:auto;overscroll-behavior:contain}
+.modal .mb.form{padding:18px 20px 6px}
+.modal .mf{padding:14px 18px;border-top:1px solid var(--line);display:flex;gap:10px}
+.modal .mf .btn{flex:1;justify-content:center}
+.pick{display:flex;align-items:center;gap:11px;padding:11px 18px;cursor:pointer;width:100%;background:none;border:0;text-align:left}
+.pick:hover,.pick:focus-visible{background:#fafbfc}
+.pick .nm{flex:1}
+.searchbox{margin:14px 18px;position:relative}
+.searchbox .input{padding-left:36px}
+.searchbox svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-3)}
+.formerr{color:var(--danger);font-size:13px;margin:0 0 12px}
+.formerr:empty{display:none}
+.summary{background:#fafbfc;border:1px solid var(--line);border-radius:6px;padding:10px 12px;font-size:13px;color:var(--ink-2);margin-bottom:14px}
+kbd{font-family:var(--mono);font-size:12px;border:1px solid var(--line-2);border-bottom-width:2px;border-radius:4px;padding:1px 6px;background:#fafbfc}
+
+/* ---------- responsive + motion ---------- */
+@media(max-width:900px){
+  .screen{padding:20px 18px 150px}
+  .stepper .lbl{font-size:11px}
+}
+@media(max-width:600px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .rail{display:none}
+  .topbar{padding:0 12px}
+  .topbar .avatar{display:none}
+  .screen{padding:18px 16px 190px}
+  .stepper .lbl{display:none}
+  .coach{flex-direction:column;align-items:stretch;left:12px;right:12px;transform:none;bottom:12px;max-width:none;width:auto}
+  .coach .acts{margin-left:0;justify-content:flex-end;flex-wrap:wrap}
+  .guidebtn{right:12px;bottom:12px}
+  .kpi .k .vl{font-size:20px}
+  .toast{bottom:auto;top:68px}
+  .toast.on{transform:translateX(-50%) translateY(4px)}
+  .crumbs > a:not(:first-child),.crumbs > .sep{display:none}
+  .topbar .end{gap:4px}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*:before,*:after{transition:none !important;animation:none !important}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="rail" aria-label="Investigation steps">
+    <div class="logo" aria-hidden="true">
+      <svg width="30" height="30" viewBox="0 0 32 32" fill="none">
+        <ellipse cx="16" cy="7" rx="11" ry="4" fill="#0078D4"/>
+        <path d="M5 7v8c0 2.2 4.9 4 11 4s11-1.8 11-4V7c0 2.2-4.9 4-11 4S5 9.2 5 7Z" fill="#106EBE"/>
+        <path d="M5 15v9c0 2.2 4.9 4 11 4s11-1.8 11-4v-9c0 2.2-4.9 4-11 4s-11-1.8-11-4Z" fill="#005A9E"/>
+        <path d="M21 22.5l2.5 2.5 4.5-5" stroke="#6cb8f6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div id="railnav"></div>
+    <div class="spacer"></div>
+    <button class="nav" data-act="help" aria-label="Help and keyboard shortcuts">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17h.01"/></svg>
+      <span class="tip">Help</span></button>
+  </nav>
+
+  <div class="main">
+    <header class="topbar">
+      <nav class="crumbs" id="crumbs" aria-label="Breadcrumb"></nav>
+      <div class="end">
+        <button class="btn sm" data-act="restart" id="restart" title="Start the walkthrough again">Restart demo</button>
+        <button class="iconbtn" data-act="search" id="searchbtn" aria-label="Go to a step (Ctrl+K)" title="Go to… (Ctrl+K)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></button>
+        <button class="iconbtn" data-act="notifications" id="bellbtn" aria-label="Notifications" title="Notifications"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg></button>
+        <span class="avatar" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span>
+      </div>
+    </header>
+    <main class="screen" id="screen" tabindex="-1"></main>
+  </div>
+</div>
+
+<div class="coach hide" id="coach" role="region" aria-label="Walkthrough guide"></div>
+<button class="guidebtn" id="guidebtn" data-act="showguide" hidden>Show guide</button>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modaltitle"></div>
+<div class="tt" id="tt" aria-hidden="true"></div>
+
+<script>
+'use strict';
+
+/* ============ helpers ============ */
+const $  = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+const pad = (n, w=2) => String(n).padStart(w, '0');
+const hm  = s => { s = Math.round(s); return pad(Math.floor(s/3600) % 24) + ':' + pad(Math.floor(s/60) % 60); };
+const hms = s => { s = Math.round(s); return hm(s) + ':' + pad(s % 60); };
+const hdur = s => { s = Math.round(s); return pad(Math.floor(s/3600)) + ':' + pad(Math.floor(s/60) % 60) + ':' + pad(s % 60); };
+const fmtN = (v, d=1) => Number(v).toLocaleString('en-US', {maximumFractionDigits:d});
+const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+const IC = {
+  home:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/>',
+  ticket:'<path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4Z"/><path d="M10 5v12" stroke-dasharray="2 2"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  flow:'<circle cx="5" cy="12" r="2.4"/><circle cx="12" cy="6" r="2.4"/><circle cx="12" cy="18" r="2.4"/><circle cx="19" cy="12" r="2.4"/><path d="M7.2 11 10 7.4M10 16.6 7.2 13M14 7.4 16.8 11M16.8 13 14 16.6"/>',
+  db:'<ellipse cx="12" cy="6" rx="8" ry="3.2"/><path d="M4 6v6c0 1.8 3.6 3.2 8 3.2s8-1.4 8-3.2V6"/><path d="M4 12v6c0 1.8 3.6 3.2 8 3.2s8-1.4 8-3.2v-6"/>',
+  pulse:'<path d="M3 12h4l2.5-6 4 12L16 12h5"/>',
+  target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/>',
+  wrench:'<path d="M14.7 6.3a4 4 0 0 0-5.4 5.1L4 16.7 7.3 20l5.3-5.3a4 4 0 0 0 5.1-5.4l-2.5 2.5-2.4-.6-.6-2.4Z"/>',
+  check:'<path d="m4.5 12.5 5 5 10-11"/>',
+  arrow:'<path d="M4 12h15m-6-6 6 6-6 6"/>',
+  x:'<path d="m6 6 12 12M18 6 6 18"/>',
+  play:'<path d="M7 4.5v15l13-7.5Z"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/>',
+  doc:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/>',
+  table:'<rect x="3.5" y="5" width="17" height="14" rx="1.5"/><path d="M3.5 10h17M9 10v9"/>',
+  folder:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>',
+  server:'<rect x="4" y="4" width="16" height="7" rx="1.5"/><rect x="4" y="13" width="16" height="7" rx="1.5"/><path d="M8 7.5h.01M8 16.5h.01"/>',
+  cal:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>'
+};
+const svg = (p, sz=18, sw=1.8) =>
+  `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+
+function toast(msg, kind){
+  const t = $('#toast'); t.textContent = msg; t.className = 'toast on' + (kind === 'err' ? ' err' : '');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('on'), kind === 'err' ? 6000 : 2600);
+}
+
+/* ============ deterministic data (seeded, so every run and every test sees the same estate) ============ */
+function mulberry32(a){
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const START = Date.UTC(2026, 5, 1);          // first run date, a Monday
+const N_NIGHTS = 120;
+const CHANGE = '2026-07-19';                  // first Sunday after IndexOptimize was moved to 00:30
+const SLA = 7 * 3600;                         // 07:00
+const JOB = 'MRH - EDW Nightly Refresh';
+const MAINT = 'MRH - IndexOptimize - EDW';
+const PKGS = [
+  {n:'Extract_POS.dtsx',          base:32, layer:'Extract'},
+  {n:'Extract_Inventory.dtsx',    base:18, layer:'Extract'},
+  {n:'Extract_Web.dtsx',          base:24, layer:'Extract'},
+  {n:'Load_DimStore.dtsx',        base:3,  layer:'Dimension'},
+  {n:'Load_DimProduct.dtsx',      base:5,  layer:'Dimension'},
+  {n:'Load_DimCustomer.dtsx',     base:7,  layer:'Dimension'},
+  {n:'Load_FactSales.dtsx',       base:72, layer:'Fact'},
+  {n:'Load_FactInventory.dtsx',   base:41, layer:'Fact'},
+  {n:'Load_FactClickstream.dtsx', base:46, layer:'Fact'}
+];
+const isoOf = ms => new Date(ms).toISOString().slice(0, 10);
+
+function simNight(ms, rnd, overlapOverride){
+  const d = new Date(ms), iso = isoOf(ms), wd = d.getUTCDay();
+  const sunday = wd === 0;
+  const overlap = overlapOverride === undefined ? (sunday && iso >= CHANGE) : overlapOverride;
+  const vol = sunday ? 1.08 : 1;              // the Sunday run loads Saturday's trading, the busiest day
+  const slow = overlap ? 1.5 + rnd() * 0.45 : 1;
+  let t = 3600;
+  const pk = PKGS.map(p => {
+    const f = (p.layer === 'Dimension' ? 1 : vol) * (p.layer === 'Fact' ? slow : 1);
+    const dur = Math.round(p.base * 60 * f * (0.94 + rnd() * 0.12));
+    const r = {n:p.n, layer:p.layer, start:t, dur};
+    t += dur + 20;
+    return r;
+  });
+  const ssas = {start:t, dur:Math.round(38 * 60 * vol * (0.94 + rnd() * 0.12))};
+  t += ssas.dur + 20;
+  const end = t + 110;                        // step 4: refresh report cache
+  return {iso, wd, sunday, overlap, pk, ssas, end, late:end > SLA};
+}
+const NIGHTS = (() => {
+  const rnd = mulberry32(20418);
+  return Array.from({length:N_NIGHTS}, (_, i) => Object.assign(simNight(START + i * 864e5, rnd), {i}));
+})();
+const SUNDAYS = NIGHTS.filter(n => n.sunday);
+const LATE = NIGHTS.filter(n => n.late);
+const LAST_LATE = LATE[LATE.length - 1];
+const ONTIME_SUNDAY = SUNDAYS.filter(n => !n.late).slice(-1)[0];
+const AFTER_FIX = (() => {
+  const rnd = mulberry32(911);
+  const firstSun = SUNDAYS[SUNDAYS.length - 1].i + 7;
+  return [0, 1, 2, 3].map(k => simNight(START + (firstSun + k * 7) * 864e5, rnd, false));
+})();
+function avgBefore(i, pkgIdx){
+  const from = Math.max(0, i - 28), rows = NIGHTS.slice(from, i);
+  if (!rows.length) return NIGHTS[i].pk[pkgIdx].dur;
+  return rows.reduce((a, n) => a + n.pk[pkgIdx].dur, 0) / rows.length;
+}
+const ymd = iso => Number(iso.replace(/-/g, ''));
+const hmsInt = s => { s = Math.round(s); return Math.floor(s/3600) * 10000 + Math.floor(s/60 % 60) * 100 + s % 60; };
+
+/* evidence tables the SSMS window can answer from */
+const COMMANDLOG = (() => {
+  const d = LAST_LATE.iso;
+  const items = [
+    ['FactSales', 'PK_FactSales', 'ALTER_INDEX', 1804, 4956],
+    ['FactSales', 'IX_FactSales_StoreDate', 'ALTER_INDEX', 4957, 7695],
+    ['FactInventorySnapshot', 'PK_FactInventorySnapshot', 'ALTER_INDEX', 7696, 10862],
+    ['FactWebClickstream', 'PK_FactWebClickstream', 'ALTER_INDEX', 10863, 14387],
+    ['FactWebClickstream', 'IX_FactWebClickstream_Session', 'ALTER_INDEX', 14388, 15250],
+    ['DimProduct', '', 'UPDATE_STATISTICS', 15251, 15390]
+  ];
+  return items.map((x, k) => [48210 + k, 'EDW', 'dw', x[0], x[1] || 'NULL', x[2],
+    x[2] === 'ALTER_INDEX'
+      ? `ALTER INDEX [${x[1]}] ON [EDW].[dw].[${x[0]}] REBUILD PARTITION = 21 WITH (SORT_IN_TEMPDB = OFF, ONLINE = OFF)`
+      : `UPDATE STATISTICS [EDW].[dw].[${x[0]}] WITH FULLSCAN`,
+    `${d} ${hms(x[3])}.000`, `${d} ${hms(x[4])}.000`]);
+})();
+const COMMANDLOG_COLS = ['ID','DatabaseName','SchemaName','ObjectName','IndexName','CommandType','Command','StartTime','EndTime'];
+const SCHED_COLS = ['job_name','schedule_name','freq_type','freq_interval','active_start_time','date_modified'];
+const SCHED = [
+  ['MRH - DatabaseBackup - FULL', 'Nightly 00:00', 4, 1, 0, '2025-11-03 10:12:44.000'],
+  [MAINT, 'Weekly - Sunday', 8, 1, 3000, '2026-07-17 16:42:09.000'],
+  [JOB, 'Nightly 01:00', 4, 1, 10000, '2025-02-20 09:30:15.000'],
+  ['MRH - DatabaseIntegrityCheck', 'Weekly - Saturday', 8, 64, 220000, '2025-11-03 10:14:02.000']
+];
+const JOBS_COLS = ['job_id','name','enabled','owner_login_name','date_modified'];
+const JOBS = [
+  ['6F1C2A10-5B8E-4C8D-9A33-0B7E3D0C1A01', JOB, 1, 'MRH\\svc_sqlagent', '2025-02-20 09:30:15.000'],
+  ['0C8A77E2-91D4-4F56-B7A1-5E2C9D8F4B12', MAINT, 1, 'MRH\\svc_sqlagent', '2026-07-17 16:42:09.000'],
+  ['A43B1D98-2E6F-47C0-8B5D-3F9E1C7A6D23', 'MRH - DatabaseBackup - FULL', 1, 'MRH\\svc_sqlagent', '2025-11-03 10:12:44.000'],
+  ['D2E5F0B7-7C13-4A9E-A6F8-1B4D2C3E5F34', 'MRH - DatabaseIntegrityCheck', 1, 'MRH\\svc_sqlagent', '2025-11-03 10:14:02.000']
+];
+const HIST_COLS = ['instance_id','step_id','step_name','run_status','run_date','run_time','run_duration','message'];
+const HISTORY = NIGHTS.slice().reverse().map(n => [
+  900000 + n.i * 5, 0, '(Job outcome)', 1, ymd(n.iso), 10000, hmsInt(n.end - 3600),
+  'The job succeeded.  The Job was invoked by Schedule 12 (Nightly 01:00).  The last step to run was step 4 (Refresh report cache).'
+]);
+function perfNight(n, seed){
+  const rnd = mulberry32(seed);
+  return Array.from({length:10}, (_, h) => {
+    const busy = n.overlap && h >= 1 && h < 5;
+    const after = n.overlap && h >= 5 && h < Math.ceil(n.end / 3600);
+    return {h,
+      lock: +(busy ? 38 + rnd() * 32 : after ? 4 + rnd() * 5 : 0.4 + rnd() * 2.4).toFixed(1),
+      blocked: busy ? Math.round(6 + rnd() * 8) : Math.round(rnd()),
+      ple: Math.round(busy ? 300 + rnd() * 420 : after ? 1400 + rnd() * 500 : 3100 + h * 60 + rnd() * 400),
+      disk: +(7.4 + rnd() * 1.4).toFixed(1)};
+  });
+}
+const PERF_LATE = perfNight(LAST_LATE, 31);
+const PERF_WED = perfNight(NIGHTS.filter(n => n.wd === 3).slice(-1)[0], 32);
+const PERF_COLS = ['object_name','counter_name','sample_time','cntr_value'];
+const PERF_ROWS = PERF_LATE.flatMap(p => [
+  ['SQLServer:Locks', 'Lock Waits/sec', `${LAST_LATE.iso} ${pad(p.h)}:00:00`, p.lock],
+  ['SQLServer:General Statistics', 'Processes blocked', `${LAST_LATE.iso} ${pad(p.h)}:00:00`, p.blocked],
+  ['SQLServer:Buffer Manager', 'Page life expectancy', `${LAST_LATE.iso} ${pad(p.h)}:00:00`, p.ple]
+]);
+const TABLES = {
+  'infra.commandlog':     {cols:COMMANDLOG_COLS, rows:COMMANDLOG, label:'infra.CommandLog'},
+  'infra.sysjobs':        {cols:JOBS_COLS, rows:JOBS, label:'infra.sysjobs'},
+  'infra.sysjobschedules':{cols:SCHED_COLS, rows:SCHED, label:'infra.sysjobschedules'},
+  'infra.sysjobhistory':  {cols:HIST_COLS, rows:HISTORY, label:'infra.sysjobhistory'},
+  'infra.perfcounters':   {cols:PERF_COLS, rows:PERF_ROWS, label:'infra.PerfCounters'}
+};
+
+const CAUSES = {
+  maintenance_overlap:'Index/statistics maintenance or backups running inside the ETL window',
+  blocking:"ETL sessions blocked by another session's locks",
+  parameter_sniffing:'A cached (generic or sniffed) plan that suits some parameter values is reused for all',
+  stale_statistics:'Out-of-date statistics produce a bad plan',
+  full_reload:'A load reprocesses far more data than the increment',
+  autogrowth:'Data/log files grow in many small, slow increments during the load',
+  wal_checkpoint_pressure:'WAL/checkpoint settings too small: checkpoints are forced over and over during the load',
+  work_mem_spill:'Sorts or hashes spill to temporary files because work_mem is too small for them',
+  missing_index:'A required index is missing or a predicate is not sargable',
+  ssis_buffer_tuning:'SSIS data flow buffers/commit sizes far too small',
+  ssas_process_full:'SSAS processes the whole database instead of changed partitions',
+  processupdate_cascade:'Dimension ProcessUpdate invalidates aggregations across partitions',
+  ssas_memory_pressure:'SSAS exceeds its memory limits during processing',
+  late_upstream_file:'An upstream source/file arrives later than the job expects',
+  subscriptions_before_refresh:'Report subscriptions/caches run on a clock, not after the refresh',
+  san_io_contention:'Shared storage latency from other workloads',
+  cpu_pressure:'CPU saturation on the ETL/database server',
+  network_latency:'Slow network between servers',
+  tempdb_contention:'tempdb allocation contention',
+  implicit_conversion:'A data type mismatch forces a conversion on the column and prevents index seeks',
+  late_arriving_dimension:'Facts are loaded before the dimension rows they reference',
+  deployment_drift:'Production objects or job settings differ from source control',
+  credential_change:'A changed or locked-out service account breaks connections',
+  report_design:"The report's own design (size, format, defaults) makes it slow, not the data source"
+};
+const RIGHT = 'maintenance_overlap';
+const WHY = {
+  blocking:'Close: the loads do wait on locks, but blocking is the symptom. Name what holds those locks, and why only on Sundays since one date.',
+  san_io_contention:'Disk latency on the late nights is the same as on any other night (the counter-check on the Perfmon step). Storage is ruled out.',
+  cpu_pressure:'Nothing in the evidence shows CPU saturation. What spikes on those nights is lock waits.',
+  full_reload:'Extract durations did not change and the loads read the usual increment. A full reload would be slow every night.',
+  autogrowth:'There are no file growth events in the ETL window, and growth would not pick only Sundays.',
+  stale_statistics:'A bad plan would be slow on every night the query runs, not only on Sundays after one date.',
+  parameter_sniffing:'A bad cached plan would not line up with one weekday and one change date.',
+  late_upstream_file:'Extract starts at 01:00 and finishes on time on the late nights: the files were there.',
+  ssas_process_full:'The cube starts late only because the load finished late. Its own duration is normal.',
+  processupdate_cascade:'The cube starts late only because the load finished late. Its own duration is normal.',
+  ssas_memory_pressure:'The cube starts late only because the load finished late. Its own duration is normal.',
+  subscriptions_before_refresh:'That would explain stale reports, not a refresh that finishes late.'
+};
+const WHY_DEFAULT = 'The evidence does not point there. Look again at what runs at 00:30 on Sundays, and since when.';
+
+/* ============ state ============ */
+const ORDER = ['ticket','agent','ssis','sql','perf','diagnose','fix'];
+const STEP_LABELS = ['Ticket','Job history','SSIS catalog','Query','Perfmon','Diagnose','Fix'];
+const TOOLKIT = {
+  commandlog:{label:'What ran inside the ETL window (CommandLog)', sql:
+`-- toolkit/infra: what ran inside the ETL window on the last late Sunday
+SELECT c.ID, c.ObjectName, c.IndexName, c.CommandType, c.Command,
+       c.StartTime, c.EndTime
+FROM   infra.CommandLog AS c
+WHERE  c.StartTime >= '${LAST_LATE.iso}T00:00' AND c.StartTime < '${LAST_LATE.iso}T07:00'
+ORDER  BY c.StartTime;`},
+  schedule:{label:'When is each MRH job scheduled?', sql:
+`-- When does each MRH job start? active_start_time is HHMMSS as an integer
+SELECT j.name AS job_name, s.name AS schedule_name, s.freq_type, s.freq_interval,
+       s.active_start_time, s.date_modified
+FROM   infra.sysjobs AS j
+JOIN   infra.sysjobschedules AS s ON s.job_id = j.job_id
+WHERE  j.name LIKE 'MRH - %'
+ORDER  BY s.active_start_time;`}
+};
+function initState(){
+  return {
+    screen:'ticket', coachOn:true, visited:{ticket:true},
+    agent:{day:'All', lateOnly:false},
+    ssis:{date:LAST_LATE.iso, compared:false},
+    sql:{text:TOOLKIT.commandlog.sql, preset:'commandlog', result:null, tab:'results', seen:{}},
+    diag:{picked:[], filter:'', verdict:null, attempts:0},
+    fix:null
+  };
+}
+let S = initState();
+
+/* ============ charts (hand-rolled SVG) ============ */
+function ticks(max, min=0){
+  const span = max - min || 1, raw = span / 4;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1,2,2.5,5,10].map(m => m * mag).find(s => s >= raw) || mag * 10;
+  const out = []; let v = Math.floor(min / step) * step;
+  while (v < max - 1e-9) { out.push(Math.round(v * 1000) / 1000); v += step; }
+  out.push(Math.round(v * 1000) / 1000);
+  return out;
+}
+/* charts are drawn at the pixel width of their card, so text stays 10.5px at any screen size */
+function cw(half){
+  const sc = $('#screen'), inner = (sc ? sc.clientWidth : 900) - (innerWidth <= 600 ? 32 : innerWidth <= 900 ? 36 : 60);
+  const w = half && inner > 1000 ? (inner - 16) / 2 : inner;
+  return Math.max(300, Math.round(w - 34));
+}
+const hLabel = h => pad(Math.floor(h)) + ':' + pad(Math.round((h % 1) * 60));
+
+/* completion time of every night; the SLA as a red line */
+function chNights(nights, o){
+  const W = cw(false), H = 260, L = 44, R = 12, T = 14, B = 30;
+  const lo = 5, hi = Math.max(10, Math.ceil(Math.max(...nights.map(n => n.end / 3600))));
+  const X = i => L + (W - L - R) * (i / (nights.length - 1));
+  const Y = h => T + (H - T - B) * (1 - (h - lo) / (hi - lo));
+  let s = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Completion time of each nightly run, with the 07:00 SLA">`;
+  for (let h = lo; h <= hi; h++) s += `<line class="axl" x1="${L}" x2="${W-R}" y1="${Y(h)}" y2="${Y(h)}"/><text x="${L-7}" y="${Y(h)+3.5}" text-anchor="end">${pad(h)}:00</text>`;
+  nights.forEach((n, i) => { if (n.iso.endsWith('-01')) s += `<text x="${X(i)}" y="${H-B+16}" text-anchor="middle">${MONTHS[+n.iso.slice(5,7)-1]}</text>`; });
+  if (o.showChange) {
+    const ci = nights.findIndex(n => n.iso === CHANGE);
+    s += `<line class="mark" x1="${X(ci)}" x2="${X(ci)}" y1="${T}" y2="${H-B}"/><text x="${X(ci)+5}" y="${T+9}">${esc(CHANGE)}</text>`;
+  }
+  s += `<line class="ref" x1="${L}" x2="${W-R}" y1="${Y(7)}" y2="${Y(7)}"/><text class="reft" x="${W-R}" y="${Y(7)-5}" text-anchor="end">SLA 07:00</text>`;
+  nights.forEach((n, i) => {
+    const on = o.match(n);
+    const col = !on ? '#cfd6de' : n.late ? 'var(--danger)' : 'var(--accent)';
+    s += `<circle class="bar" cx="${X(i)}" cy="${Y(n.end/3600)}" r="${on ? 3.4 : 2.2}" fill="${col}" data-t="${DAYS[n.wd].slice(0,3)} ${n.iso} · finished ${hm(n.end)}"/>`;
+  });
+  return s + '</svg>';
+}
+/* horizontal bars: ratio against the 28-night average */
+function chRatio(rows){
+  const W = cw(false), rowH = 22, H = rows.length * rowH + 24, L = Math.min(170, W * .42), R = 44;
+  const max = Math.max(2.5, ...rows.map(r => r.v));
+  const X = v => L + (W - L - R) * (v / max);
+  let s = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Duration against the 28-night average, per package">`;
+  s += `<line class="mark" x1="${X(1)}" x2="${X(1)}" y1="4" y2="${H-18}"/><text x="${X(1)}" y="${H-4}" text-anchor="middle">1.0× = normal</text>`;
+  rows.forEach((r, i) => {
+    const y = 6 + i * rowH, col = r.v >= 1.3 ? 'var(--danger)' : 'var(--accent)';
+    s += `<text x="${L-8}" y="${y+12}" text-anchor="end">${esc(r.k)}</text>
+      <rect class="bar" x="${L}" y="${y}" width="${Math.max(1, X(r.v) - L)}" height="${rowH-8}" rx="2" fill="${col}" data-t="${esc(r.k)}: ${r.v.toFixed(2)}× its average"/>
+      <text x="${X(r.v)+5}" y="${y+12}">${r.v.toFixed(2)}×</text>`;
+  });
+  return s + '</svg>';
+}
+/* line chart with hour labels */
+function chLine(series, o={}){
+  const W = cw(true), H = o.h || 220, L = 46, R = 10, T = 12, B = 36;
+  const labels = series[0].pts.map(p => p.k);
+  const all = series.flatMap(s => s.pts.map(p => p.v));
+  const tk = ticks(Math.max(...all), 0), hi = tk[tk.length-1], lo = tk[0];
+  const X = i => L + (W - L - R) * (i / (labels.length - 1));
+  const Y = v => T + (H - T - B) * (1 - (v - lo) / ((hi - lo) || 1));
+  let s = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label || 'Line chart')}">`;
+  tk.forEach(t => s += `<line class="axl" x1="${L}" x2="${W-R}" y1="${Y(t)}" y2="${Y(t)}"/><text x="${L-7}" y="${Y(t)+3.5}" text-anchor="end">${fmtN(t, 0)}</text>`);
+  const every = (W - L - R) / labels.length < 44 ? 2 : 1;
+  labels.forEach((l, i) => { if (i % every === 0) s += `<text x="${X(i)}" y="${H-B+15}" text-anchor="middle">${esc(l)}</text>`; });
+  series.forEach(se => {
+    const d = se.pts.map((p, i) => `${i ? 'L' : 'M'}${X(i)},${Y(p.v)}`).join(' ');
+    s += `<path d="${d}" fill="none" stroke="${se.color}" stroke-width="2.2" stroke-linejoin="round"/>`;
+    se.pts.forEach((p, i) => s += `<circle class="bar" cx="${X(i)}" cy="${Y(p.v)}" r="3.2" fill="${se.color}" data-t="${esc(se.name)} ${esc(p.k)}: ${fmtN(p.v)}"/>`);
+  });
+  s += series.map((se, si) => `<g><rect x="${L + si*Math.min(190, (W - L) / 2)}" y="${H-10}" width="9" height="9" rx="2" fill="${se.color}"/><text class="lgd" x="${L + si*Math.min(190, (W - L) / 2) + 14}" y="${H-2}">${esc(se.name)}</text></g>`).join('');
+  return s + '</svg>';
+}
+/* Sunday completion columns, before and after the fix */
+function chSundays(list){
+  const W = cw(false), H = 230, L = 44, R = 10, T = 14, B = 34;
+  const lo = 5, hi = Math.max(10, Math.ceil(Math.max(...list.map(x => x.end / 3600))));
+  const Y = h => T + (H - T - B) * (1 - (h - lo) / (hi - lo));
+  const bw = (W - L - R) / list.length;
+  let s = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Sunday completion times before and after the schedule change">`;
+  for (let h = lo; h <= hi; h++) s += `<line class="axl" x1="${L}" x2="${W-R}" y1="${Y(h)}" y2="${Y(h)}"/><text x="${L-7}" y="${Y(h)+3.5}" text-anchor="end">${pad(h)}:00</text>`;
+  list.forEach((x, i) => {
+    const cx = L + bw * i, y = Y(x.end / 3600);
+    s += `<rect class="bar" x="${cx + bw*.2}" y="${y}" width="${bw*.6}" height="${Y(lo) - y}" rx="2" fill="${x.late ? 'var(--danger)' : 'var(--ok)'}" data-t="${x.iso} · ${x.after ? 'after' : 'before'} the fix · ${hm(x.end)}"/>
+      <text x="${cx + bw/2}" y="${H-B+14}" text-anchor="middle">${x.iso.slice(5)}</text>
+      <text x="${cx + bw/2}" y="${H-B+27}" text-anchor="middle">${x.after ? 'after' : 'before'}</text>`;
+  });
+  s += `<line class="ref" x1="${L}" x2="${W-R}" y1="${Y(7)}" y2="${Y(7)}"/><text class="reft" x="${W-R}" y="${Y(7)-5}" text-anchor="end">SLA 07:00</text>`;
+  return s + '</svg>';
+}
+function tip(e, text){
+  const t = $('#tt'); t.textContent = text; t.classList.add('on');
+  const x = Math.min(e.clientX + 12, window.innerWidth - t.offsetWidth - 8);
+  t.style.left = Math.max(8, x) + 'px'; t.style.top = (e.clientY - 34) + 'px';
+}
+const untip = () => $('#tt').classList.remove('on');
+
+/* ============ chrome ============ */
+const SCREEN_META = {
+  ticket:  {icon:'ticket', rail:'Ticket',          crumb:'INC-20418'},
+  agent:   {icon:'clock',  rail:'Job history',     crumb:'SQL Server Agent · Job history'},
+  ssis:    {icon:'flow',   rail:'SSIS catalog',    crumb:'SSISDB · All Executions'},
+  sql:     {icon:'db',     rail:'SSMS query',      crumb:'SSMS · SQLQuery1.sql'},
+  perf:    {icon:'pulse',  rail:'Perfmon',         crumb:'Perfmon · MRH-SQLDW01'},
+  diagnose:{icon:'target', rail:'Diagnose',        crumb:'Root cause'},
+  fix:     {icon:'wrench', rail:'Fix & debrief',   crumb:'Fix & debrief'}
+};
+function chrome(){
+  $('#railnav').innerHTML = ORDER.map(k =>
+    `<button class="nav ${S.screen === k ? 'on' : ''}" data-go="${k}" aria-label="${esc(SCREEN_META[k].rail)}"${S.screen === k ? ' aria-current="page"' : ''}>
+       ${svg(IC[SCREEN_META[k].icon])}<span class="tip">${esc(SCREEN_META[k].rail)}</span></button>`).join('');
+  const cr = [['Incidents', 'ticket'], ...(S.screen === 'ticket' ? [] : [['INC-20418', 'ticket']]), [SCREEN_META[S.screen].crumb, null]];
+  $('#crumbs').innerHTML = `<a data-go="ticket" aria-label="Home" role="link" tabindex="0">${svg(IC.home, 17)}</a>` +
+    cr.map(([txt, go], i) => `<span class="sep">${svg(IC.arrow, 13, 2)}</span>` +
+      (i === cr.length - 1 ? `<span class="now" aria-current="page">${esc(txt)}</span>`
+                           : `<a data-go="${go}" role="link" tabindex="0">${esc(txt)}</a>`)).join('');
+  document.title = `${SCREEN_META[S.screen].rail} — MSS Sim walkthrough`;
+}
+function stepper(){
+  const cur = ORDER.indexOf(S.screen);
+  return `<nav class="stepper" aria-label="Progress">` + STEP_LABELS.map((l, i) => {
+    const cls = `st ${i < cur ? 'done' : ''} ${i === cur ? 'on' : ''}`;
+    const inner = `<span class="bul">${i < cur ? svg(IC.check, 12, 3) : ''}</span><span class="lbl">${esc(l)}</span>`;
+    return i < cur
+      ? `<button class="${cls}" data-go="${ORDER[i]}" title="Back to ${esc(l)}">${inner}</button>`
+      : `<div class="${cls}"${i === cur ? ' aria-current="step"' : ''}>${inner}</div>`;
+  }).join('') + `</nav>`;
+}
+const head = (title, sub) => `${stepper()}<h1 class="title" tabindex="-1">${esc(title)}</h1><p class="sub">${sub}</p>`;
+function tableHTML(cols, rows, opts={}){
+  if (!rows.length) return `<div class="tbl"><table class="grid"><thead><tr>${cols.map(c => `<th scope="col">${esc(c)}</th>`).join('')}</tr></thead>
+    <tbody><tr><td class="empty" colspan="${cols.length}">${esc(opts.empty || 'No rows.')}</td></tr></tbody></table></div>`;
+  return `<div class="tbl${opts.tall ? ' tall' : ''}"><table class="grid"><thead><tr>${cols.map(c => `<th scope="col">${esc(c)}</th>`).join('')}</tr></thead><tbody>` +
+    rows.map((r, ri) => `<tr${opts.hl && opts.hl(ri) ? ' class="hl"' : ''}>` + r.map(v => `<td class="num">${v === null ? '<i>NULL</i>' : esc(v)}</td>`).join('') + `</tr>`).join('') +
+    `</tbody></table></div>`;
+}
+
+/* ============ screens ============ */
+function scTicket(){
+  return head('INC-20418 · Monday dashboards not ready (again)',
+    'A real ticket from the simulator (lab 07). You will prove why the refresh is late, name the root cause and fix it, using the same evidence a DBA would query at the client.') +
+  `<div class="two">
+    <div class="card"><div class="ch"><span class="chip bad">P2</span><span class="chip grey">EDW nightly refresh</span><span class="chip grey">Raised by: Head of Retail Operations</span></div>
+      <div class="cb">
+        <blockquote>For the last month or two the Sunday morning numbers are never there when the regional managers log in at 07:00. The rest of the week is fine. Nobody changed anything in the reports. Can you find out why and tell us what needs to change?</blockquote>
+        <h2 class="sec">What you have (production evidence, last ${N_NIGHTS} nights)</h2>
+        ${tableHTML(['Evidence','Where'], [
+          ['SQL Agent jobs and history','infra.sysjobs / sysjobschedules / sysjobhistory'],
+          ['SSIS catalog','catalog.executions'],
+          ['Maintenance log (Ola Hallengren)','infra.CommandLog'],
+          ['Perfmon capture','infra.PerfCounters']])}
+        <p class="note">Deliverable: the root cause, the evidence that <b>proves</b> it (not just correlates with it), and a recommended change.</p>
+        <div class="row" style="margin-top:16px"><button class="btn primary" id="startbtn" data-go="agent">Start investigation ${svg(IC.arrow, 15, 2.2)}</button></div>
+      </div></div>
+    <div class="card"><div class="ch"><b>Meridian Retail Holdings</b></div><div class="cb">
+      <ul class="facts">
+        <li><span>Warehouse</span><b>22 TB</b></li><li><span>Stores</span><b>400</b></li>
+        <li><span>Refresh window</span><b>01:00 – 07:00</b></li><li><span>SLA</span><b>07:00</b></li>
+        <li><span>Server</span><b class="mono">MRH-SQLDW01</b></li><li><span>Job</span><b class="mono">${esc(JOB)}</b></li>
+      </ul></div></div>
+  </div>`;
+}
+
+function agentRows(){
+  return NIGHTS.filter(n => (S.agent.day === 'All' || DAYS[n.wd] === S.agent.day) && (!S.agent.lateOnly || n.late)).reverse();
+}
+function scAgent(){
+  const rows = agentRows();
+  const sunLate = SUNDAYS.filter(n => n.late).length;
+  const onSun = S.agent.day === 'Sunday';
+  return head('SQL Server Agent · Job history',
+    `Every run of <code>${esc(JOB)}</code> from <code>infra.sysjobhistory</code>. The job starts at 01:00; the numbers must be there by 07:00.`) +
+  `<div class="kpi">
+    <div class="k"><div class="lb">Nights</div><div class="vl" id="kpi-nights">${N_NIGHTS}</div><div class="dl">${esc(NIGHTS[0].iso)} → ${esc(NIGHTS[N_NIGHTS-1].iso)}</div></div>
+    <div class="k bad"><div class="lb">Late nights</div><div class="vl" id="kpi-late">${LATE.length}</div><div class="dl">finished after 07:00</div></div>
+    <div class="k"><div class="lb">Late Sundays</div><div class="vl">${sunLate} / ${SUNDAYS.length}</div><div class="dl">${onSun ? 'every one since ' + esc(LATE[0].iso) : 'filter to Sunday to see the pattern'}</div></div>
+    <div class="k"><div class="lb">Latest finish</div><div class="vl">${hm(Math.max(...NIGHTS.map(n => n.end)))}</div><div class="dl">SLA 07:00</div></div>
+  </div>
+  <div class="card" style="margin-bottom:16px"><div class="ch"><b>Completion time per night</b><span class="chip grey">${onSun ? 'Sundays highlighted' : 'all nights'}</span></div>
+    <div class="cb">${chNights(NIGHTS, {match:n => (S.agent.day === 'All' || DAYS[n.wd] === S.agent.day) && (!S.agent.lateOnly || n.late), showChange:onSun})}</div></div>
+  <div class="filterbar">
+    <div class="field"><label for="f_day">Run day</label>
+      <select class="input" id="f_day" data-bind="agentDay">${['All', ...DAYS.slice(1), 'Sunday'].map(d => `<option ${d === S.agent.day ? 'selected' : ''}>${d}</option>`).join('')}</select></div>
+    <label class="check"><input type="checkbox" id="f_late" data-bind="agentLate" ${S.agent.lateOnly ? 'checked' : ''}> Late runs only</label>
+    <span class="note" style="margin:0 0 12px auto" id="rowcount">${rows.length} row${rows.length === 1 ? '' : 's'}</span>
+  </div>
+  <div class="card">${tableHTML(['run_date','run_day','run_time','run_duration','ended','run_status','SLA'],
+    rows.map(n => [ymd(n.iso), DAYS[n.wd], '01:00:00', hdur(n.end - 3600), hms(n.end), '1 (Succeeded)', n.late ? 'LATE' : 'on time']),
+    {tall:true, hl:i => rows[i].late, empty:'No nights match these filters. Try another day, or untick "Late runs only".'})}</div>
+  <p class="note">run_status 1 means the job <i>succeeded</i>. It was never failing, only finishing late, so no alert fired.</p>`;
+}
+
+function scSsis(){
+  const n = NIGHTS.find(x => x.iso === S.ssis.date) || LAST_LATE;
+  const rows = n.pk.map((p, k) => ({p, avg:avgBefore(n.i, k)}));
+  const ratio = rows.map(r => ({k:r.p.n.replace('.dtsx', ''), v:r.p.dur / r.avg}));
+  const slowest = Math.max(...ratio.map(r => r.v));
+  return head('SSISDB · All Executions',
+    'One row per package from <code>catalog.executions</code> for the night you pick, against each package\'s average over the 28 nights before it. Which layer got slow?') +
+  `<div class="filterbar">
+    <div class="field"><label for="f_date">Sunday run</label>
+      <select class="input" id="f_date" data-bind="ssisDate">${SUNDAYS.slice().reverse().map(x => `<option value="${x.iso}" ${x.iso === n.iso ? 'selected' : ''}>${x.iso}${x.late ? ' · late' : ''}</option>`).join('')}</select></div>
+    <span class="chip ${n.late ? 'bad' : 'ok'}" style="margin-bottom:12px">${n.late ? 'Finished ' + hm(n.end) + ' · late' : 'Finished ' + hm(n.end) + ' · on time'}</span>
+  </div>
+  <div style="display:grid;gap:16px">
+    <div class="card"><div class="ch"><b>Duration against the 28-night average</b></div><div class="cb">${chRatio(ratio)}
+      <p class="note">${slowest >= 1.3 ? 'The three <b>fact loads</b> are the slow ones; extracts and dimensions are normal.' : 'Nothing unusual on this night: every package is close to its average.'}</p></div></div>
+    <div class="card">${tableHTML(['package_name','layer','start_time','end_time','duration','28-night avg','vs avg'],
+      rows.map((r, k) => [r.p.n, r.p.layer, hms(r.p.start), hms(r.p.start + r.p.dur), hdur(r.p.dur), hdur(r.avg), ratio[k].v.toFixed(2) + '×']),
+      {hl:i => ratio[i].v >= 1.3})}</div>
+  </div>
+  <p class="note">After the packages the job processes the <code>MRH_Sales</code> cube (started ${hm(n.ssas.start)}, ${hdur(n.ssas.dur)}) and refreshes the report cache. They start late only because the load finished late.</p>`;
+}
+
+function scSql(){
+  const r = S.sql.result;
+  const oe = Object.values(TABLES).map(t => `<li class="l4">${svg(IC.table, 13)}<button class="tbl-item" data-act="topRows" data-arg="${esc(t.label)}" title="Select Top 1000 Rows">${esc(t.label)}</button></li>`).join('');
+  let pane = '<div class="empty">Press <kbd>F5</kbd> or <b>Execute</b> to run the query.</div>';
+  if (r) pane = S.sql.tab === 'results' && r.cols
+    ? tableHTML(r.cols, r.rows, {empty:'(0 rows)'})
+    : `<pre class="msgs" id="messages">${r.msgs.map(m => m.err ? `<span class="err">${esc(m.text)}</span>` : esc(m.text)).join('\n\n')}</pre>`;
+  const tabBtn = (k, l) => `<button role="tab" id="tab-${k}" aria-selected="${S.sql.tab === k}" data-act="sqlTab" data-arg="${k}">${l}</button>`;
+  return head('SSMS · SQLQuery1.sql',
+    'A query window on <code>MRH-SQLDW01</code>, database <code>Infra_Sim</code>. Pick a toolkit query or write your own against the evidence tables in Object Explorer.') +
+  `<div class="ssms">
+    <aside class="oe" aria-label="Object Explorer"><div class="oh">Object Explorer</div><ul>
+      <li>${svg(IC.server, 13)} MRH-SQLDW01 (SQL Server 15.0)</li>
+      <li class="l2">${svg(IC.folder, 13)} Databases</li>
+      <li class="l3">${svg(IC.db, 13)} Infra_Sim</li>${oe}</ul></aside>
+    <section class="qwin">
+      <div class="qbar">
+        <button class="btn primary sm" id="runbtn" data-act="runSql">${svg(IC.play, 13, 2)} Execute</button>
+        <label class="vh" for="preset">Toolkit query</label>
+        <select class="input" id="preset" data-bind="sqlPreset">${Object.entries(TOOLKIT).map(([k, t]) => `<option value="${k}" ${S.sql.preset === k ? 'selected' : ''}>${esc(t.label)}</option>`).join('')}<option value="custom" ${S.sql.preset === 'custom' ? 'selected' : ''}>Your own query</option></select>
+        <span class="note" style="margin:0 0 0 auto">Read-only simulation of the evidence tables</span>
+      </div>
+      <label class="vh" for="editor">Query editor</label>
+      <textarea class="editor" id="editor" spellcheck="false" autocapitalize="off" autocomplete="off" data-input="sqlText">${esc(S.sql.text)}</textarea>
+      <div class="rtabs" role="tablist">${tabBtn('results', 'Results')}${tabBtn('messages', 'Messages')}</div>
+      <div class="rpane" id="rpane" role="tabpanel" aria-labelledby="tab-${S.sql.tab}">${pane}</div>
+      ${r ? `<div class="status ${r.error ? 'err' : ''}" id="sqlstatus"><span>${r.error ? 'Query completed with errors.' : 'Query executed successfully.'}</span>
+        <span class="sp">MRH-SQLDW01 (15.0 RTM)</span><span>MRH\\junior.dba (61)</span><span>Infra_Sim</span><span>00:00:0${r.cols ? 1 : 0}</span><span>${r.cols ? r.rows.length : 0} rows</span></div>` : ''}
+    </section>
+  </div>`;
+}
+
+function scPerf(){
+  const late = LAST_LATE, wed = NIGHTS.filter(n => n.wd === 3).slice(-1)[0];
+  const k = p => pad(p.h) + ':00';
+  const avg = (a, f) => a.reduce((s, x) => s + f(x), 0) / a.length;
+  return head('Perfmon · MRH-SQLDW01',
+    `Counters from <code>infra.PerfCounters</code>, one sample an hour: the last late Sunday (${esc(late.iso)}) against an ordinary Wednesday (${esc(wed.iso)}). This is the <b>mechanism</b>, not just the timing.`) +
+  `<div class="halves">
+    <div class="card"><div class="ch"><b>Lock Waits/sec</b><span class="chip bad">spikes 01:00 – 05:00</span></div><div class="cb">
+      ${chLine([{name:'Sun ' + late.iso, color:'var(--danger)', pts:PERF_LATE.map(p => ({k:k(p), v:p.lock}))},
+                {name:'Wed ' + wed.iso, color:'var(--accent)', pts:PERF_WED.map(p => ({k:k(p), v:p.lock}))}], {label:'Lock waits per second by hour'})}</div></div>
+    <div class="card"><div class="ch"><b>Page life expectancy (s)</b><span class="chip warn">buffer churn</span></div><div class="cb">
+      ${chLine([{name:'Sun ' + late.iso, color:'var(--danger)', pts:PERF_LATE.map(p => ({k:k(p), v:p.ple}))},
+                {name:'Wed ' + wed.iso, color:'var(--accent)', pts:PERF_WED.map(p => ({k:k(p), v:p.ple}))}], {label:'Page life expectancy by hour'})}</div></div>
+  </div>
+  <h2 class="sec" style="margin-top:20px">Counter-checks: what this is <i>not</i></h2>
+  <div class="kpi">
+    <div class="k"><div class="lb">Avg disk ms/read · Sun</div><div class="vl">${avg(PERF_LATE, p => p.disk).toFixed(1)}</div><div class="dl">Wed ${avg(PERF_WED, p => p.disk).toFixed(1)} ms: storage is fine</div></div>
+    <div class="k"><div class="lb">Extract duration · Sun</div><div class="vl">${hdur(late.pk.slice(0,3).reduce((a, p) => a + p.dur, 0)).slice(0,5)}</div><div class="dl">same as before ${esc(CHANGE)}: volume is fine</div></div>
+    <div class="k"><div class="lb">Full backup ends</div><div class="vl">00:20</div><div class="dl">before 01:00: not the backup</div></div>
+    <div class="k"><div class="lb">CHECKDB ends</div><div class="vl">Sat 23:40</div><div class="dl">before 01:00: not CHECKDB</div></div>
+  </div>`;
+}
+
+function evidence(){
+  return [
+    [!!S.visited.agentSun, 'Pattern: only Sundays are late, and only from ' + CHANGE],
+    [!!S.ssis.compared, 'Layer: the fact loads are 1.5–2× their average; extracts are normal'],
+    [!!S.sql.seen.commandlog, 'Overlap: ALTER INDEX … ONLINE = OFF on the fact tables from 00:30'],
+    [!!S.sql.seen.schedule, 'Schedule: IndexOptimize active_start_time = 3000, changed 2026-07-17'],
+    [!!S.visited.perf, 'Mechanism: lock waits and blocked processes spike while both run']
+  ];
+}
+function causeList(){
+  const q = S.diag.filter.trim().toLowerCase();
+  const keys = Object.keys(CAUSES).filter(k => !q || k.includes(q) || CAUSES[k].toLowerCase().includes(q));
+  if (!keys.length) return `<div class="empty" id="noCause">No cause matches “${esc(S.diag.filter)}”.</div>`;
+  return keys.map(k => `<label class="cause ${S.diag.picked.includes(k) ? 'on' : ''}">
+    <input type="checkbox" id="cause-${k}" data-bind="cause" value="${k}" ${S.diag.picked.includes(k) ? 'checked' : ''}>
+    <div><code>${k}</code><span>${esc(CAUSES[k])}</span></div></label>`).join('');
+}
+function verdictHTML(){
+  const v = S.diag.verdict;
+  if (!v) return '';
+  if (v.kind === 'ok') return `<div class="verdict ok" role="status" id="verdict"><b>Correct.</b> <code>maintenance_overlap</code>: the weekly IndexOptimize job was moved into the ETL window, and its offline rebuilds lock the partitions the Sunday loads write to.</div>`;
+  if (v.kind === 'extra') return `<div class="verdict warn" role="alert" id="verdict"><b>Right cause, but not only that.</b> Remove the causes the evidence does not support: ${v.extra.map(k => `<code>${esc(k)}</code>`).join(', ')}.</div>`;
+  return `<div class="verdict bad" role="alert" id="verdict"><b>Not supported by the evidence.</b> ${v.why.map(w => `<div style="margin-top:6px"><code>${esc(w[0])}</code>: ${esc(w[1])}</div>`).join('')}</div>`;
+}
+function scDiagnose(){
+  const ev = evidence(), n = S.diag.picked.length;
+  return head('Root cause',
+    'Name the cause, the way <code>bisim lab check 07 --cause …</code> grades it. The keys are the simulator\'s own list.') +
+  `<div class="two">
+    <div class="card"><div class="ch"><b>Causes</b><span class="chip grey" id="pickedCount">${n} selected</span>
+        <div style="margin-left:auto;min-width:200px;flex:1;max-width:280px"><label class="vh" for="causeFilter">Filter causes</label>
+        <input class="input" id="causeFilter" placeholder="Filter causes…" data-input="causeFilter" value="${esc(S.diag.filter)}" style="padding:7px 11px"></div></div>
+      <div class="causes" id="causes">${causeList()}</div>
+      <div class="cb" style="border-top:1px solid var(--line)">
+        <div class="row"><button class="btn primary" id="submitDiag" data-act="submitDiag" ${n ? '' : 'disabled'}>Submit diagnosis</button>
+        ${n ? '' : '<span class="note" style="margin:0">Select at least one cause.</span>'}
+        ${S.diag.attempts ? `<span class="note" style="margin:0 0 0 auto">Attempts: ${S.diag.attempts}</span>` : ''}</div>
+        ${verdictHTML()}
+        ${S.diag.verdict && S.diag.verdict.kind === 'ok' ? `<div class="row" style="margin-top:12px"><button class="btn primary" data-go="fix" id="toFix">Continue to the fix ${svg(IC.arrow, 15, 2.2)}</button></div>` : ''}
+      </div></div>
+    <div class="card"><div class="ch"><b>Evidence you have</b><span class="chip ${ev.every(e => e[0]) ? 'ok' : 'grey'}">${ev.filter(e => e[0]).length} / ${ev.length}</span></div>
+      <div class="cb"><ul class="evid">${ev.map(e => `<li class="${e[0] ? 'got' : ''}"><span class="dot">${e[0] ? svg(IC.check, 11, 3) : ''}</span>${esc(e[1])}</li>`).join('')}</ul>
+      <p class="note">A diagnosis is proven when you have the pattern, the overlap and the mechanism, and have ruled out the alternatives.</p></div></div>
+  </div>`;
+}
+
+function scFix(){
+  if (!S.diag.verdict || S.diag.verdict.kind !== 'ok') {
+    return head('Fix & debrief', 'The fix depends on the cause.') +
+      `<div class="card" id="fixGuard"><div class="cb"><b>Diagnose first.</b> <span style="color:var(--ink-2)">A change without a proven cause is a guess. Name the root cause, then come back.</span>
+       <div class="row" style="margin-top:14px"><button class="btn primary" data-go="diagnose">Go to Diagnose ${svg(IC.arrow, 15, 2.2)}</button></div></div></div>`;
+  }
+  const sched = S.fix ? `Occurs every week on ${S.fix.day} at ${S.fix.time}:00.` : 'Occurs every week on Sunday at 00:30:00.';
+  const before = SUNDAYS.slice(-4).map(n => Object.assign({}, n, {after:false}));
+  const after = AFTER_FIX.map(n => Object.assign({}, n, {after:true}));
+  const mean = a => a.reduce((s, x) => s + x.end, 0) / a.length;
+  return head('Fix & debrief',
+    'Move the maintenance job out of the protected ETL window, then prove the fix with the same evidence.') +
+  `<div class="two">
+    <div class="card"><div class="ch">${svg(IC.cal, 16)}<b class="mono">${esc(MAINT)}</b><span class="chip ${S.fix ? 'ok' : 'bad'}" id="schedChip">${S.fix ? 'outside the ETL window' : 'inside the ETL window'}</span></div>
+      <div class="cb"><div class="summary" id="schedSummary">${esc(sched)}</div>
+        <div class="row"><button class="btn ${S.fix ? '' : 'primary'}" id="editSched" data-act="editSchedule">${S.fix ? 'Edit schedule again' : 'Edit schedule…'}</button>
+        ${S.fix && S.fix.online ? '<span class="chip">ONLINE = ON</span>' : ''}</div></div></div>
+    <div class="card"><div class="ch"><b>ETL window</b></div><div class="cb"><ul class="facts">
+      <li><span>Refresh</span><b>01:00 – 07:00</b></li><li><span>Rebuild takes</span><b>≈ 4h 15m</b></li><li><span>Rule</span><b>no maintenance inside</b></li></ul></div></div>
+  </div>
+  ${S.fix ? `<div class="kpi" style="margin-top:16px">
+      <div class="k bad"><div class="lb">Sunday finish · 4 before</div><div class="vl">${hm(mean(before))}</div><div class="dl">average</div></div>
+      <div class="k ok"><div class="lb">Sunday finish · 4 after</div><div class="vl" id="afterAvg">${hm(mean(after))}</div><div class="dl">average, simulated</div></div>
+      <div class="k"><div class="lb">Late Sundays after</div><div class="vl" id="afterLate">${after.filter(n => n.late).length}</div><div class="dl">of 4</div></div>
+      <div class="k"><div class="lb">Lock waits/sec · Sun</div><div class="vl">≈ 2</div><div class="dl">back to baseline</div></div></div>
+    <div class="card" style="margin-bottom:16px"><div class="ch"><b>Sunday completion, before and after</b></div><div class="cb">${chSundays(before.concat(after))}</div></div>
+    <div class="card" id="debrief"><div class="ch"><b>Debrief</b><span class="chip ok">lab 07 · passed</span></div><div class="cb">
+      <p style="margin-top:0"><b>Root cause.</b> <code>${esc(MAINT)}</code> was moved from Sunday 09:00 to Sunday 00:30 on 2026-07-17. Its offline rebuilds hold a schema-modification lock on the newest fact partitions, and the Sunday 01:00 loads wait behind them.</p>
+      <ol class="chain">
+        <li><b>Pattern</b>: only Sundays, only since ${esc(CHANGE)}. Saturday volume was the same before.</li>
+        <li><b>Layer</b>: the fact loads run 1.5–2× their average; extracts, the cube and reports are only late because the load is.</li>
+        <li><b>Overlap</b>: CommandLog shows <code>REBUILD … ONLINE = OFF</code> from 00:30 to about 04:45, inside the window.</li>
+        <li><b>Mechanism</b>: lock waits/sec and processes blocked spike while both run; page life expectancy collapses.</li>
+        <li><b>Counter-check</b>: disk latency and data volume are normal; the backup and CHECKDB finish before 01:00.</li>
+      </ol>
+      <p><b>Better still:</b> rebuild only what needs it (<code>@FragmentationLevel2 = 30</code>, <code>ONLINE = ON</code>, <code>@TimeLimit</code>), and add an Agent alert that fires if maintenance is still running at 00:55.</p>
+      <div class="row"><button class="btn primary" id="startover" data-act="restart">Start over</button><span class="note" style="margin:0">Run it for real: <code>bisim lab start 07</code></span></div>
+    </div></div>` : ''}`;
+}
+
+/* ============ the SSMS window's small T-SQL front end ============ */
+const DENIED = ['update','delete','insert','drop','alter','truncate','create','merge','exec','execute','grant','revoke'];
+function lineOf(text, token){
+  const i = text.toLowerCase().indexOf(String(token).toLowerCase());
+  return i < 0 ? 1 : text.slice(0, i).split('\n').length;
+}
+const msg = (num, lvl, st, line, text) => ({err:true, text:`Msg ${num}, Level ${lvl}, State ${st}, Line ${line}\n${text}`});
+const done = () => ({text:'Completion time: 2026-09-28T09:14:03.117+03:00'});
+function runSql(src){
+  const text = String(src || '');
+  const code = text.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/--[^\n]*/g, ' ').replace(/^\s*GO\s*$/gim, ' ').trim();
+  if (!code) return {cols:null, rows:[], msgs:[{text:'Commands completed successfully.'}, done()]};
+  const first = (code.match(/^[\w@#]+/) || [code.split(/\s+/)[0]])[0];
+  const verb = first.toLowerCase();
+  if (DENIED.includes(verb)) {
+    const obj = (code.match(/^\w+\s+(?:(?:table|view|procedure|proc|into|from)\s+)?([\[\]\w.]+)/i) || [])[1] || '';
+    const parts = obj.replace(/[\[\]]/g, '').split('.');
+    const name = parts.pop() || '', schema = parts.pop() || 'dbo';
+    return {error:true, cols:null, rows:[], msgs:[msg(229, 14, 5, lineOf(text, first),
+      name ? `The ${verb.toUpperCase()} permission was denied on the object '${name}', database 'Infra_Sim', schema '${schema}'.`
+           : `The ${verb.toUpperCase()} permission was denied in database 'Infra_Sim'.`), done()]};
+  }
+  if (verb !== 'select' && verb !== 'with') return {error:true, cols:null, rows:[], msgs:[msg(102, 15, 1, lineOf(text, first), `Incorrect syntax near '${first}'.`), done()]};
+  const refs = [...code.matchAll(/\b(?:from|join)\s+((?:\[?\w+\]?\.)?\[?\w+\]?)/gi)].map(m => m[1]);
+  const top = code.match(/^select\s+top\s*\(?\s*(\d+)\s*\)?/i);
+  const limit = top ? +top[1] : Infinity;
+  if (!refs.length) {
+    const expr = code.replace(/^select\s+/i, '').replace(/;\s*$/, '').trim();
+    const lit = expr.match(/^'((?:[^']|'')*)'$/);
+    if (lit) return ok(['(No column name)'], [[lit[1].replace(/''/g, "'")]], limit);
+    if (/^-?\d+(\.\d+)?$/.test(expr)) return ok(['(No column name)'], [[expr]], limit);
+    if (/^getdate\(\s*\)$/i.test(expr)) return ok(['(No column name)'], [[`${LAST_LATE.iso} 09:14:03.117`]], limit);
+    const bad = expr.split(/[\s,(]/)[0] || expr;
+    return {error:true, cols:null, rows:[], msgs:[msg(207, 16, 1, lineOf(text, bad), `Invalid column name '${bad}'.`), done()]};
+  }
+  for (const ref of refs) {
+    const key = ref.replace(/[\[\]]/g, '').toLowerCase();
+    if (!has(TABLES, key)) {
+      const shown = ref.replace(/[\[\]]/g, '');
+      return {error:true, cols:null, rows:[], msgs:[msg(208, 16, 1, lineOf(text, ref), `Invalid object name '${shown}'.`), done()]};
+    }
+  }
+  const keys = refs.map(r => r.replace(/[\[\]]/g, '').toLowerCase());
+  const pick = keys.includes('infra.sysjobschedules') ? 'infra.sysjobschedules' : keys[0];
+  const t = TABLES[pick];
+  const res = ok(t.cols, t.rows, limit);
+  res.table = pick;
+  return res;
+}
+function ok(cols, rows, limit){
+  const out = rows.slice(0, limit);
+  return {cols, rows:out, msgs:[{text:`(${out.length} row${out.length === 1 ? '' : 's'} affected)`}, done()]};
+}
+
+/* ============ coach ============ */
+const COACH = {
+  ticket: () => ['1 / 7 · Ticket', 'The client says the refresh is <b>sometimes</b> late. Nobody knows why and every team blames another. Start where the client\'s own records are: the Agent job history.', 'Start investigation', () => go('agent'), '#startbtn'],
+  agent: () => S.agent.day !== 'Sunday'
+    ? ['2 / 7 · Pattern', LATE.length + ' late nights out of ' + N_NIGHTS + ', and the job <b>succeeded</b> every time. Filter the history by run day and look for a pattern.', 'Show Sundays only', () => setAgent({day:'Sunday', lateOnly:false}), '#f_day']
+    : ['2 / 7 · Pattern', 'Every late night is a Sunday, and every Sunday since <b>' + CHANGE + '</b> is late. Before that, Sundays were on time. Something changed that week.', 'Continue', () => go('ssis'), null],
+  ssis: () => !S.ssis.compared
+    ? ['3 / 7 · Layer', 'On the last late Sunday the three <b>fact loads</b> ran far over their average. Extracts are normal, so the data arrived on time. Compare it with an on-time Sunday.', 'Compare with an on-time Sunday', () => { S.ssis.compared = true; S.ssis.date = ONTIME_SUNDAY.iso; render(); toast('Showing ' + ONTIME_SUNDAY.iso + ', before the change'); }, '#f_date']
+    : ['3 / 7 · Layer', 'Before the change the fact loads ran at their normal pace. So what else touches the fact tables on a Sunday night?', 'Continue', () => go('sql'), null],
+  sql: () => !S.sql.seen.commandlog
+    ? ['4 / 7 · Overlap', 'Ask the maintenance log what ran inside the ETL window. Press <b>Execute</b> (or <kbd>F5</kbd>).', 'Run the query', () => { loadPreset('commandlog'); runNow(); }, '#runbtn']
+    : !S.sql.seen.schedule
+      ? ['4 / 7 · Overlap', 'Offline index rebuilds on the fact tables from <b>00:30</b>, right inside the window. Now check when that job is scheduled, and when the schedule changed.', 'Check the schedule', () => { loadPreset('schedule'); runNow(); }, '#preset']
+      : ['4 / 7 · Overlap', '<code>active_start_time = 3000</code> is 00:30, modified on 2026-07-17, the Friday before the first late Sunday. That is the timing. Now the mechanism.', 'Continue', () => go('perf'), null],
+  perf: () => ['5 / 7 · Mechanism', 'While the rebuild runs, lock waits and blocked processes spike and page life expectancy collapses. Disk and volume are normal. You have proof, not just correlation.', 'Continue', () => go('diagnose'), null],
+  diagnose: () => S.diag.verdict && S.diag.verdict.kind === 'ok'
+    ? ['6 / 7 · Diagnose', 'Proven. Now fix it, and show that the fix worked.', 'Continue to the fix', () => go('fix'), '#toFix']
+    : S.diag.picked.length === 1 && S.diag.picked[0] === RIGHT
+      ? ['6 / 7 · Diagnose', 'One cause, backed by every piece of evidence you collected.', 'Submit diagnosis', () => submitDiag(), '#submitDiag']
+      : ['6 / 7 · Diagnose', 'Pick the cause the evidence proves. A wrong pick tells you why it does not fit.', 'Choose it for me', () => { S.diag.picked = [RIGHT]; S.diag.filter = ''; S.diag.verdict = null; render(); }, '#causes'],
+  fix: () => !S.diag.verdict || S.diag.verdict.kind !== 'ok'
+    ? ['7 / 7 · Fix', 'The fix depends on the cause. Diagnose first.', 'Go to Diagnose', () => go('diagnose'), null]
+    : !S.fix
+      ? ['7 / 7 · Fix', 'Move IndexOptimize back outside the ETL window. The schedule dialog refuses any time that would overlap 01:00 – 07:00.', 'Move it to Sunday 09:00', () => applyFix({day:'Sunday', time:'09:00', online:false}), '#editSched']
+      : ['7 / 7 · Fix', 'Sundays finish before 07:00 again. That is the whole engagement in miniature: pattern, layer, overlap, mechanism, fix, proof.', 'Start over', () => restart(), '#startover']
+};
+let coachAction = null;
+function coach(){
+  const c = $('#coach'), g = $('#guidebtn');
+  const d = COACH[S.screen] ? COACH[S.screen]() : null;
+  g.hidden = S.coachOn || !d;
+  coachAction = d ? d[3] : null;
+  if (!S.coachOn || !d) { c.className = 'coach hide'; c.innerHTML = ''; return; }
+  c.className = 'coach';
+  const i = ORDER.indexOf(S.screen);
+  c.innerHTML = `<div><div class="step">${esc(d[0])}</div><div class="txt">${d[1]}</div></div>
+    <div class="acts">${i > 0 ? `<button data-act="coachBack">Back</button>` : ''}
+    <button data-act="hideguide">Hide</button>
+    <button class="go" data-act="coachDo">${esc(d[2])}</button></div>`;
+  if (d[4]) { const el = $(d[4]); if (el) el.classList.add('pulse'); }
+}
+
+/* ============ modals ============ */
+let lastFocus = null;
+function modalShell(title, bodyHTML, footHTML){
+  const m = $('#modal');
+  if (!m.classList.contains('on')) lastFocus = document.activeElement;
+  m.className = 'modal on';
+  m.innerHTML = `<div class="box">
+    <div class="mh"><b id="modaltitle">${esc(title)}</b>
+      <button class="btn ghost sm" data-act="closeModal" aria-label="Close" style="margin-left:auto">${svg(IC.x, 16, 2.2)}</button></div>
+    ${bodyHTML}<div class="mf">${footHTML}</div></div>`;
+  const f = m.querySelector('[autofocus]') || m.querySelector('input,select,button');
+  if (f) f.focus();
+  return m;
+}
+function closeModal(){
+  const m = $('#modal');
+  if (!m.classList.contains('on')) return;
+  m.className = 'modal'; m.innerHTML = '';
+  if (lastFocus && document.contains(lastFocus)) lastFocus.focus();
+  lastFocus = null;
+}
+function openSearch(){
+  const m = modalShell('Go to…',
+    `<div class="searchbox">${svg(IC.search, 16)}<label class="vh" for="gosearch">Search steps</label><input class="input" id="gosearch" placeholder="Search…" autofocus data-input="goSearch"></div>
+     <div class="mb" id="gohits"></div>`, `<button class="btn" data-act="closeModal">Cancel</button>`);
+  paintSearch('');
+  return m;
+}
+function paintSearch(q){
+  const ql = q.trim().toLowerCase();
+  const hits = ORDER.filter(k => !ql || SCREEN_META[k].rail.toLowerCase().includes(ql) || SCREEN_META[k].crumb.toLowerCase().includes(ql));
+  $('#gohits').innerHTML = hits.map(k => `<button class="pick" data-act="goto" data-arg="${k}">${svg(IC[SCREEN_META[k].icon], 16)}<span class="nm">${esc(SCREEN_META[k].rail)} <span style="color:var(--ink-3)">· ${esc(SCREEN_META[k].crumb)}</span></span>${svg(IC.arrow, 15, 2)}</button>`).join('')
+    || `<div class="empty">Nothing matches “${esc(q)}”.</div>`;
+}
+function openNotifications(){
+  const items = [['INC-20418 assigned to you', 'Monday dashboards not ready', '2h'],
+                 ['Job succeeded', JOB + ' · ' + hm(LAST_LATE.end), LAST_LATE.iso.slice(5)],
+                 ['Schedule changed', MAINT + ' · by MRH\\ops.admin', '07-17']];
+  modalShell('Notifications', `<div class="mb">${items.map(i => `<div class="pick"><span class="nm"><b>${esc(i[0])}</b><span style="color:var(--ink-3)"> — ${esc(i[1])}</span></span><span class="chip">${esc(i[2])}</span></div>`).join('')}</div>`,
+    `<button class="btn" data-act="closeModal">Close</button>`);
+}
+function openHelp(){
+  modalShell('Help', `<div class="mb form"><ul class="facts">
+    <li><span>Run the query (SSMS step)</span><b><kbd>F5</kbd> or <kbd>Ctrl</kbd>+<kbd>Enter</kbd></b></li>
+    <li><span>Go to a step</span><b><kbd>Ctrl</kbd>+<kbd>K</kbd></b></li>
+    <li><span>Close a dialog</span><b><kbd>Esc</kbd></b></li>
+    <li><span>Link to a step</span><b class="mono">MSS-sim.html#sql</b></li></ul>
+    <p class="note">Everything here is simulated in the page from the same shapes the simulator produces. Run the real lab with <code>bisim lab start 07</code>.</p></div>`,
+    `<button class="btn" data-act="closeModal">Close</button>`);
+}
+const RUN_MIN = 255;                          // the rebuild takes about 4h 15m
+function scheduleProblem(day, time){
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time || '')) return 'Enter a start time as hh:mm.';
+  if (day !== 'Saturday' && day !== 'Sunday') return 'Pick Saturday or Sunday.';
+  const [h, m] = time.split(':').map(Number);
+  const start = (day === 'Saturday' ? -1440 : 0) + h * 60 + m, end = start + RUN_MIN;
+  if (start < 420 && end > 60) {
+    const e = ((end % 1440) + 1440) % 1440;
+    return `IndexOptimize would run ${time} – ${pad(Math.floor(e / 60))}:${pad(e % 60)}, inside the protected ETL window (Sunday 01:00 – 07:00). Start after 07:00 on Sunday, or early enough on Saturday to finish before 01:00.`;
+  }
+  return '';
+}
+function editSchedule(){
+  const cur = S.fix || {day:'Sunday', time:'00:30', online:false};
+  modalShell('Job Schedule Properties · ' + MAINT, `<div class="mb form">
+      <div class="field"><label for="s_day">Occurs weekly on</label>
+        <select class="input" id="s_day">${['Saturday','Sunday'].map(d => `<option ${d === cur.day ? 'selected' : ''}>${d}</option>`).join('')}</select></div>
+      <div class="field"><label for="s_time">Starting at</label><input class="input" type="time" id="s_time" value="${esc(cur.time)}" aria-describedby="s_err"></div>
+      <label class="check" style="padding-top:0"><input type="checkbox" id="s_online" ${cur.online ? 'checked' : ''}> Also rebuild with <code>ONLINE = ON</code> (Enterprise)</label>
+      <p class="formerr" id="s_err" role="alert"></p></div>`,
+    `<button class="btn" data-act="closeModal">Cancel</button><button class="btn primary" id="s_ok" data-act="saveSchedule">OK</button>`);
+}
+function saveSchedule(){
+  const day = $('#s_day').value, time = $('#s_time').value, online = $('#s_online').checked;
+  const p = scheduleProblem(day, time);
+  const err = $('#s_err');
+  if (p) { err.textContent = p; $('#s_time').setAttribute('aria-invalid', 'true'); $('#s_time').focus(); return; }
+  closeModal();
+  applyFix({day, time, online});
+}
+
+/* ============ actions ============ */
+function setAgent(p){
+  Object.assign(S.agent, p);
+  if (S.agent.day === 'Sunday') S.visited.agentSun = true;
+  render();
+}
+function setSql(text, preset){
+  S.sql.text = text; S.sql.preset = preset;
+  const ed = $('#editor'); if (ed) ed.value = text;       // runNow() reads the editor
+}
+function loadPreset(k){ if (has(TOOLKIT, k)) setSql(TOOLKIT[k].sql, k); }
+function runNow(){
+  const ed = $('#editor');
+  if (ed) S.sql.text = ed.value;
+  const r = runSql(S.sql.text);
+  S.sql.result = r;
+  S.sql.tab = r.cols ? 'results' : 'messages';
+  if (r.table === 'infra.commandlog') S.sql.seen.commandlog = true;
+  if (r.table === 'infra.sysjobschedules') S.sql.seen.schedule = true;
+  render();
+}
+function submitDiag(){
+  const p = S.diag.picked;
+  if (!p.length) return;
+  S.diag.attempts++;
+  if (p.length === 1 && p[0] === RIGHT) S.diag.verdict = {kind:'ok'};
+  else if (p.includes(RIGHT)) S.diag.verdict = {kind:'extra', extra:p.filter(k => k !== RIGHT)};
+  else S.diag.verdict = {kind:'bad', why:p.map(k => [k, WHY[k] || WHY_DEFAULT])};
+  render();
+  const v = $('#verdict'); if (v) v.scrollIntoView({block:'nearest'});
+  if (S.diag.verdict.kind === 'ok') toast('Diagnosis accepted');
+}
+function applyFix(f){
+  if (scheduleProblem(f.day, f.time)) return;
+  S.fix = f;
+  render();
+  toast('Schedule saved: IndexOptimize now runs outside the ETL window');
+}
+function restart(){
+  closeModal();
+  S = initState();
+  go('ticket');
+  toast('Demo reset');
+}
+const ACTIONS = {
+  restart, closeModal,
+  search: openSearch, notifications: openNotifications, help: openHelp,
+  showguide: () => { S.coachOn = true; coach(); },
+  hideguide: () => { S.coachOn = false; coach(); $('#guidebtn').focus(); },
+  coachBack: () => { const i = ORDER.indexOf(S.screen); if (i > 0) go(ORDER[i-1]); },
+  coachDo: () => { if (coachAction) coachAction(); },
+  goto: el => { closeModal(); go(el.dataset.arg); },
+  runSql: runNow,
+  sqlTab: el => { S.sql.tab = el.dataset.arg === 'messages' ? 'messages' : 'results'; render(); },
+  topRows: el => { setSql(`SELECT TOP (1000) *\nFROM ${el.dataset.arg};`, 'custom'); runNow(); },
+  submitDiag, editSchedule, saveSchedule
+};
+const BINDS = {
+  agentDay: el => setAgent({day: DAYS.includes(el.value) ? el.value : 'All'}),
+  agentLate: el => setAgent({lateOnly: el.checked}),
+  ssisDate: el => { if (NIGHTS.some(n => n.iso === el.value)) { S.ssis.date = el.value; if (el.value !== LAST_LATE.iso) S.ssis.compared = true; render(); } },
+  sqlPreset: el => { if (el.value === 'custom') S.sql.preset = 'custom'; else loadPreset(el.value); render(); },
+  cause: el => {
+    const k = el.value; if (!has(CAUSES, k)) return;
+    S.diag.picked = el.checked ? [...new Set([...S.diag.picked, k])] : S.diag.picked.filter(x => x !== k);
+    S.diag.verdict = null;
+    render();
+  }
+};
+const INPUTS = {
+  sqlText: el => { S.sql.text = el.value; if (S.sql.preset !== 'custom' && el.value !== TOOLKIT[S.sql.preset].sql) { S.sql.preset = 'custom'; const p = $('#preset'); if (p) p.value = 'custom'; } },
+  causeFilter: el => { S.diag.filter = el.value; $('#causes').innerHTML = causeList(); },
+  goSearch: el => paintSearch(el.value)
+};
+
+/* ============ router ============ */
+const SCREENS = {ticket:scTicket, agent:scAgent, ssis:scSsis, sql:scSql, perf:scPerf, diagnose:scDiagnose, fix:scFix};
+function go(s){
+  if (!has(SCREENS, s)) s = 'ticket';
+  S.screen = s; S.visited[s] = true;
+  try { history.replaceState(null, '', '#' + s); } catch (e) { /* file:// in some browsers */ }
+  render();
+  const h = $('#screen h1'); if (h) h.focus({preventScroll:true});
+}
+function render(){
+  const sc = $('#screen');
+  const aid = document.activeElement && document.activeElement.id;
+  try {
+    if (!has(SCREENS, S.screen)) S.screen = 'ticket';
+    sc.dataset.screen = S.screen;
+    sc.innerHTML = SCREENS[S.screen]();
+    chrome(); coach();
+  } catch (err) {
+    sc.innerHTML = `<div class="card" id="crash"><div class="cb"><b>This step could not be drawn.</b> <span style="color:var(--ink-2)">${esc(err && err.message || err)}</span>
+      <div class="row" style="margin-top:14px"><button class="btn primary" data-act="restart">Restart demo</button></div></div></div>`;
+    toast('Something went wrong drawing this step. Restart the demo to continue.', 'err');
+  }
+  sc.scrollTop = 0; untip();
+  if (aid) { const el = document.getElementById(aid); if (el && el !== document.activeElement) el.focus({preventScroll:true}); }
+}
+
+/* ============ wiring: one delegated listener per event type ============ */
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act],[data-go]');
+  if (!el || el.disabled) return;
+  if (el.dataset.go) { e.preventDefault(); go(el.dataset.go); return; }
+  const fn = ACTIONS[el.dataset.act];
+  if (fn) fn(el, e);
+});
+document.addEventListener('change', e => { const f = BINDS[e.target.dataset && e.target.dataset.bind]; if (f) f(e.target); });
+document.addEventListener('input', e => { const f = INPUTS[e.target.dataset && e.target.dataset.input]; if (f) f(e.target); });
+$('#modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+$('#screen').addEventListener('mousemove', e => { const el = e.target.closest('[data-t]'); if (el) tip(e, el.dataset.t); else untip(); });
+$('#screen').addEventListener('mouseleave', untip);
+document.addEventListener('keydown', e => {
+  const modalOn = $('#modal').classList.contains('on');
+  if (e.key === 'Escape') { if (modalOn) { e.preventDefault(); closeModal(); } return; }
+  if (modalOn && e.key === 'Tab') {            // keep focus inside the dialog
+    const f = $$('#modal button, #modal input, #modal select').filter(x => !x.disabled);
+    if (!f.length) return;
+    if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length-1].focus(); }
+    else if (!e.shiftKey && document.activeElement === f[f.length-1]) { e.preventDefault(); f[0].focus(); }
+    return;
+  }
+  if (modalOn && e.key === 'Enter' && e.target.id === 's_time') { e.preventDefault(); saveSchedule(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); if (!modalOn) openSearch(); return; }
+  if (S.screen === 'sql' && !modalOn && (e.key === 'F5' || ((e.ctrlKey || e.metaKey) && e.key === 'Enter'))) { e.preventDefault(); runNow(); return; }
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('a[data-go]')) { e.preventDefault(); go(e.target.dataset.go); }
+});
+let resizeT = 0, lastW = innerWidth;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeT);
+  resizeT = setTimeout(() => { if (innerWidth !== lastW) { lastW = innerWidth; if (!$('#modal').classList.contains('on') && S.screen !== 'sql') render(); } }, 150);
+});
+window.addEventListener('hashchange', () => { const h = decodeHash(); if (h !== S.screen) go(h); });
+window.addEventListener('error', e => toast('Something went wrong: ' + (e.message || 'unknown error') + '. Restart the demo if the screen looks wrong.', 'err'));
+window.addEventListener('unhandledrejection', e => toast('Something went wrong: ' + ((e.reason && e.reason.message) || e.reason || 'unknown error') + '.', 'err'));
+function decodeHash(){
+  let h = '';
+  try { h = decodeURIComponent(location.hash.slice(1)); } catch (e) { h = ''; }
+  return has(SCREENS, h) ? h : 'ticket';
+}
+
+/* read-only handle for tests and the curious */
+window.MSS = Object.freeze({
+  get state(){ return JSON.parse(JSON.stringify(S)); },
+  nights: NIGHTS.map(n => ({iso:n.iso, wd:n.wd, end:n.end, late:n.late, overlap:n.overlap})),
+  afterFix: AFTER_FIX.map(n => ({iso:n.iso, end:n.end, late:n.late})),
+  change: CHANGE, causes: Object.keys(CAUSES), runSql, scheduleProblem, order: ORDER.slice()
+});
+
+go(decodeHash());
+</script>
+</body>
+</html>
