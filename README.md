@@ -9,4 +9,6 @@ SSMS-style window, confirm the mechanism in perfmon, name the root cause, and fi
 
 - One HTML file, no build step, no network requests: open `index.html` in any browser.
 - Data is generated in the page from a fixed seed, so every visit sees the same estate.
-- Keyboard friendly: F5 runs the query, Ctrl+K jumps to a step, Esc closes dialogs. Deep links like `#sql` open a step directly.
+- Explore off the guide: write your own SQL against the evidence tables (WHERE, LIKE, IN, BETWEEN, GROUP BY, ORDER BY, TOP, one JOIN) in several query tabs, open any run's job steps or any SSIS package's messages, compare any two nights in Perfmon, and try other fixes to see which ones actually work.
+- Pin findings to a notebook (kept in your browser) and export it as Markdown. Light and dark themes.
+- Keyboard friendly: F5 runs the query, Ctrl+K jumps to a step, N opens your notes, ? shows all shortcuts, Esc closes dialogs. Deep links like `#sql` open a step directly.

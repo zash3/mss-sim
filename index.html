@@ -4,19 +4,49 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="Interactive walkthrough: diagnose a late nightly BI refresh on the Meridian Retail Holdings estate (bisim lab 07).">
+<meta name="color-scheme" content="light dark">
 <title>MSS Sim — interactive walkthrough</title>
+<script>/* apply the saved theme before first paint */try{var t=JSON.parse(localStorage.getItem('mss.theme'));if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
 <style>
 :root{
   --rail:#0b0d12; --rail-2:#151922; --rail-ink:#8b95a5;
   --accent:#0078D4; --accent-d:#106EBE; --accent-wash:#e5f1fb; --accent-ink:#005a9e; --on-accent:#fff;
-  --paper:#fff; --canvas:#f5f7f9; --ink:#161a20; --ink-2:#5b6672; --ink-3:#7d8793;
-  --line:#e6e9ee; --line-2:#d4dae1; --bg-2:#f2f4f7;
-  --ok:#17a67a; --ok-wash:#e2f6ef; --warn:#b7791f; --warn-wash:#fdf3dc; --danger:#d13438; --danger-wash:#fdeaea;
-  --c1:#0078D4; --c2:#d13438; --c3:#21b6b0; --c4:#e8a33d; --c5:#7b61c9; --c6:#8d97a3;
+  --paper:#fff; --canvas:#f5f7f9; --ink:#161a20; --ink-2:#5b6672; --ink-3:#747e8a;
+  --line:#e6e9ee; --line-2:#d4dae1; --bg-1:#fafbfc; --bg-2:#f2f4f7; --bg-3:#eef1f4; --quote:#f7fafd;
+  --ok:#128a65; --ok-wash:#e2f6ef; --ok-line:#b7e4d3; --ok-ink:#0d6b4f;
+  --warn:#9a6414; --warn-wash:#fdf3dc; --warn-line:#f0d9a2; --warn-ink:#7a5410;
+  --danger:#d13438; --danger-wash:#fdeaea; --danger-line:#f4c2c3; --danger-ink:#9b1f23;
+  --status-bg:#fff4ce; --status-line:#f0dc8c; --status-ink:#5c4a00;
+  --serr-bg:#fde7e9; --serr-line:#f1b8bd; --serr-ink:#8a1c22;
+  --chart-dim:#cfd6de;
   --r:8px; --rs:6px;
   --mono:ui-monospace,SFMono-Regular,"Cascadia Mono",Consolas,Menlo,monospace;
   --shadow:0 1px 2px rgba(16,24,40,.05), 0 1px 3px rgba(16,24,40,.06);
   --shadow-l:0 12px 34px rgba(16,24,40,.16);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --accent:#2b88d8; --accent-d:#3a96e0; --accent-wash:#12304b; --accent-ink:#9fd0f7;
+    --paper:#161a21; --canvas:#0f1216; --ink:#e6e9ee; --ink-2:#aab3bf; --ink-3:#8c96a2;
+    --line:#2a313c; --line-2:#3a4250; --bg-1:#1b2029; --bg-2:#222834; --bg-3:#262d39; --quote:#18202b;
+    --ok:#3cc596; --ok-wash:#0f3a2d; --ok-line:#1f5c47; --ok-ink:#8fe3c3;
+    --warn:#e3b35a; --warn-wash:#3a2e12; --warn-line:#5f4a1c; --warn-ink:#f1d59a;
+    --danger:#f06a6e; --danger-wash:#3d1b1d; --danger-line:#6b2c30; --danger-ink:#f7b3b5;
+    --status-bg:#3a3312; --status-line:#5c5220; --status-ink:#f1dc8f;
+    --serr-bg:#43191c; --serr-line:#6d2a2f; --serr-ink:#f4b5b9;
+    --chart-dim:#3b4351; --shadow:0 1px 2px rgba(0,0,0,.4); --shadow-l:0 12px 34px rgba(0,0,0,.55);
+  }
+}
+:root[data-theme="dark"]{
+  --accent:#2b88d8; --accent-d:#3a96e0; --accent-wash:#12304b; --accent-ink:#9fd0f7;
+  --paper:#161a21; --canvas:#0f1216; --ink:#e6e9ee; --ink-2:#aab3bf; --ink-3:#8c96a2;
+  --line:#2a313c; --line-2:#3a4250; --bg-1:#1b2029; --bg-2:#222834; --bg-3:#262d39; --quote:#18202b;
+  --ok:#3cc596; --ok-wash:#0f3a2d; --ok-line:#1f5c47; --ok-ink:#8fe3c3;
+  --warn:#e3b35a; --warn-wash:#3a2e12; --warn-line:#5f4a1c; --warn-ink:#f1d59a;
+  --danger:#f06a6e; --danger-wash:#3d1b1d; --danger-line:#6b2c30; --danger-ink:#f7b3b5;
+  --status-bg:#3a3312; --status-line:#5c5220; --status-ink:#f1dc8f;
+  --serr-bg:#43191c; --serr-line:#6d2a2f; --serr-ink:#f4b5b9;
+  --chart-dim:#3b4351; --shadow:0 1px 2px rgba(0,0,0,.4); --shadow-l:0 12px 34px rgba(0,0,0,.55);
 }
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -51,10 +81,13 @@ code,.mono{font-family:var(--mono);font-size:12.5px}
 .crumbs .sep{color:var(--ink-3);display:inline-flex}
 .crumbs .now{background:var(--accent-wash);color:var(--accent-ink);font-weight:600;
   padding:5px 11px;border-radius:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.topbar .end{margin-left:auto;display:flex;align-items:center;gap:10px;color:var(--ink-3);flex:0 0 auto}
-.iconbtn{background:none;border:0;padding:6px;color:var(--ink-3);cursor:pointer;display:inline-flex;border-radius:6px;transition:.15s}
+.topbar .end{margin-left:auto;display:flex;align-items:center;gap:6px;color:var(--ink-3);flex:0 0 auto}
+.iconbtn{background:none;border:0;padding:6px;color:var(--ink-3);cursor:pointer;display:inline-flex;border-radius:6px;transition:.15s;position:relative}
 .iconbtn:hover{color:var(--ink);background:var(--bg-2)}
-.avatar{width:32px;height:32px;border-radius:999px;background:#e9edf1;display:grid;place-items:center;color:var(--ink-3)}
+.badge{position:absolute;top:0;right:-2px;min-width:16px;height:16px;border-radius:999px;background:var(--accent);color:var(--on-accent);
+  font-size:10.5px;font-weight:700;display:grid;place-items:center;padding:0 4px;line-height:1}
+.badge[hidden]{display:none}
+.avatar{width:32px;height:32px;border-radius:999px;background:var(--bg-3);display:grid;place-items:center;color:var(--ink-3);margin-left:4px}
 
 .screen{flex:1 1 0;min-height:0;overflow-y:auto;overflow-x:hidden;padding:26px 30px 110px}
 h1.title{font-size:24px;font-weight:650;margin:0 0 4px;letter-spacing:-.01em}
@@ -63,31 +96,40 @@ h2.sec{font-size:15px;font-weight:650;margin:0 0 10px}
 p.sub{color:var(--ink-2);margin:0 0 22px;max-width:820px}
 
 /* ---------- generic bits ---------- */
-.btn{border:1px solid var(--line-2);background:#fff;padding:9px 16px;border-radius:var(--rs);
-  cursor:pointer;font-weight:500;display:inline-flex;align-items:center;gap:8px;transition:.14s}
+.btn{border:1px solid var(--line-2);background:var(--paper);padding:9px 16px;border-radius:var(--rs);
+  cursor:pointer;font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:.14s}
 .btn:hover{border-color:var(--ink-3)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600}
 .btn.primary:hover{background:var(--accent-d);border-color:var(--accent-d)}
+.btn.danger{background:var(--danger);border-color:var(--danger);color:#fff;font-weight:600}
 .btn.ghost{border-color:transparent;background:transparent;color:var(--ink-2)}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 .btn.sm{padding:6px 12px;font-size:13px}
+.btn[aria-pressed="true"]{background:var(--accent-wash);border-color:var(--accent);color:var(--accent-ink)}
+.linkbtn{background:none;border:0;padding:0;color:var(--accent-ink);cursor:pointer;font:inherit;text-decoration:underline;text-underline-offset:2px}
+.linkbtn:hover{color:var(--accent)}
+.pin{border:1px solid var(--line-2);background:var(--paper);color:var(--ink-2);border-radius:999px;padding:3px 10px;font-size:12px;
+  cursor:pointer;display:inline-flex;align-items:center;gap:5px;margin-left:auto}
+.pin:hover{border-color:var(--accent);color:var(--accent-ink)}
 .field{display:block;margin-bottom:16px}
-.field > label,.field > .lb{display:block;font-weight:500;margin-bottom:7px;font-size:13px;color:var(--ink-2)}
+.field > label,.field > .lb,.lb{display:block;font-weight:500;margin-bottom:7px;font-size:13px;color:var(--ink-2)}
 .input{width:100%;border:1px solid var(--line-2);border-radius:var(--rs);
-  padding:10px 12px;background:#fff;color:var(--ink);outline:none;transition:.14s}
+  padding:10px 12px;background:var(--paper);color:var(--ink);outline:none;transition:.14s}
 .input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-wash)}
 .input::placeholder{color:#9aa3ad}
 .input[aria-invalid="true"]{border-color:var(--danger)}
+textarea.input{resize:vertical}
 select.input{cursor:pointer;-webkit-appearance:none;appearance:none;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238d97a3' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:right 11px center;padding-right:34px}
-.card{border:1px solid var(--line);border-radius:var(--r);background:#fff;box-shadow:var(--shadow);min-width:0}
+.card{border:1px solid var(--line);border-radius:var(--r);background:var(--paper);box-shadow:var(--shadow);min-width:0}
 .card .ch{padding:13px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .card .ch b{font-size:13.5px}
+.card .ch select.input{width:auto;padding:5px 30px 5px 10px;font-size:13px}
 .card .cb{padding:16px}
 .chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;
   padding:3px 10px;border-radius:999px;background:var(--accent-wash);color:var(--accent-ink);white-space:nowrap}
-.chip.grey{background:#eef1f4;color:var(--ink-2)}
+.chip.grey{background:var(--bg-3);color:var(--ink-2)}
 .chip.ok{background:var(--ok-wash);color:var(--ok)}
 .chip.warn{background:var(--warn-wash);color:var(--warn)}
 .chip.bad{background:var(--danger-wash);color:var(--danger)}
@@ -95,12 +137,16 @@ select.input{cursor:pointer;-webkit-appearance:none;appearance:none;
 .tbl.tall{max-height:360px}
 table.grid{width:100%;border-collapse:collapse}
 table.grid th{text-align:left;font-weight:600;font-size:13px;color:var(--ink-2);position:sticky;top:0;z-index:1;
-  padding:10px 14px;border-bottom:1px solid var(--line);background:#fafbfc;white-space:nowrap}
+  padding:10px 14px;border-bottom:1px solid var(--line);background:var(--bg-1);white-space:nowrap}
 table.grid td{padding:10px 14px;border-bottom:1px solid var(--line);white-space:nowrap}
 table.grid tr:last-child td{border-bottom:0}
-table.grid tbody tr:hover{background:#fafbfc}
+table.grid tbody tr:hover{background:var(--bg-1)}
 table.grid tr.hl td{background:var(--danger-wash)}
 table.grid td.empty{white-space:normal}
+table.grid td.wrap{white-space:normal;min-width:260px}
+.sortbtn{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;display:inline-flex;gap:4px;align-items:center}
+.sortbtn:hover{color:var(--ink)}
+.sortbtn .ar{color:var(--ink-3);font-size:11px}
 .num{font-variant-numeric:tabular-nums}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .two{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:20px;align-items:start}
@@ -108,7 +154,8 @@ table.grid td.empty{white-space:normal}
 @media(max-width:1000px){.two,.halves{grid-template-columns:minmax(0,1fr)}}
 .empty{color:var(--ink-3);text-align:center;padding:36px 10px;font-size:13px}
 .note{color:var(--ink-3);font-size:12.5px;margin:10px 0 0}
-blockquote{margin:0 0 16px;padding:12px 16px;border-left:3px solid var(--accent);background:#f7fafd;color:var(--ink-2);border-radius:0 6px 6px 0}
+.warnline{background:var(--warn-wash);color:var(--warn-ink);border:1px solid var(--warn-line);border-radius:6px;padding:8px 11px;font-size:13px;margin:0 0 14px}
+blockquote{margin:0 0 16px;padding:12px 16px;border-left:3px solid var(--accent);background:var(--quote);color:var(--ink-2);border-radius:0 6px 6px 0}
 .facts{margin:0;padding:0;list-style:none}
 .facts li{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
 .facts li:last-child{border-bottom:0}
@@ -119,7 +166,7 @@ blockquote{margin:0 0 16px;padding:12px 16px;border-left:3px solid var(--accent)
 .stepper .st{flex:1;text-align:center;position:relative;color:var(--ink-3);font-size:12.5px;font-weight:500;
   background:none;border:0;padding:0;min-width:0}
 .stepper .st .bul{width:22px;height:22px;border-radius:999px;border:2px solid var(--line-2);
-  background:#fff;margin:0 auto 8px;display:grid;place-items:center;position:relative;z-index:2;transition:.2s}
+  background:var(--paper);margin:0 auto 8px;display:grid;place-items:center;position:relative;z-index:2;transition:.2s}
 .stepper .st:not(:last-child):after{content:"";position:absolute;top:10px;left:50%;right:-50%;
   height:2px;background:var(--line-2);z-index:1}
 .stepper .st.done .bul{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
@@ -133,7 +180,7 @@ blockquote{margin:0 0 16px;padding:12px 16px;border-left:3px solid var(--accent)
 
 /* ---------- KPI tiles ---------- */
 .kpi{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:16px}
-.kpi .k{border:1px solid var(--line);border-radius:var(--r);background:#fff;padding:14px 16px;box-shadow:var(--shadow);min-width:0}
+.kpi .k{border:1px solid var(--line);border-radius:var(--r);background:var(--paper);padding:14px 16px;box-shadow:var(--shadow);min-width:0}
 .kpi .k .lb{font-size:12px;color:var(--ink-3);font-weight:600;letter-spacing:.02em;margin-bottom:6px}
 .kpi .k .vl{font-size:24px;font-weight:650;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 .kpi .k .dl{font-size:12px;color:var(--ink-3);margin-top:3px}
@@ -143,42 +190,58 @@ blockquote{margin:0 0 16px;padding:12px 16px;border-left:3px solid var(--accent)
 
 /* ---------- filter bar ---------- */
 .filterbar{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px}
-.filterbar .field{margin:0;min-width:170px}
+.filterbar .field{margin:0;min-width:150px}
+.filterbar .field.date{min-width:140px;max-width:170px}
 .check{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;padding:10px 0}
 .check input{width:16px;height:16px;accent-color:var(--accent);margin:0}
+.formerr{color:var(--danger);font-size:13px;margin:0 0 12px}
+.formerr:empty{display:none}
 
 /* ---------- SSMS query window ---------- */
-.ssms{display:grid;grid-template-columns:230px minmax(0,1fr);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:#fff;box-shadow:var(--shadow)}
+.ssms{display:grid;grid-template-columns:230px minmax(0,1fr);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--paper);box-shadow:var(--shadow)}
+.oe{border-right:1px solid var(--line);background:var(--bg-1);font-size:13px;min-width:0}
+.oe .oh{padding:9px 12px;font-weight:600;border-bottom:1px solid var(--line);font-size:12px;color:var(--ink-2)}
+.oe ul{list-style:none;margin:0;padding:6px 0}
+.oe li{padding:3px 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px;color:var(--ink-2)}
+.oe li.l2{padding-left:26px}.oe li.l3{padding-left:40px}.oe li.l4{padding-left:40px}.oe li.l5{padding-left:74px;font-family:var(--mono);font-size:11.5px;color:var(--ink-3)}
+.oe .tw{background:none;border:0;padding:0 2px;color:var(--ink-3);cursor:pointer;width:18px;flex:0 0 18px;font-size:10px}
+.oe button.tbl-item{background:none;border:0;padding:2px 4px;border-radius:4px;cursor:pointer;color:var(--ink);font-family:var(--mono);font-size:12px;text-align:left;overflow:hidden;text-overflow:ellipsis}
+.oe button.tbl-item:hover{background:var(--accent-wash);color:var(--accent-ink)}
 @media(max-width:900px){
   .ssms{grid-template-columns:minmax(0,1fr)}
   .oe{border-right:0;border-bottom:1px solid var(--line)}
   .oe ul{display:flex;flex-wrap:wrap;gap:4px;padding:8px}
   .oe li:not(.l4){display:none}
   .oe li.l4{padding:0}
+  .oe .tw{display:none}
 }
-.oe{border-right:1px solid var(--line);background:#fafbfc;font-size:13px;min-width:0}
-.oe .oh{padding:9px 12px;font-weight:600;border-bottom:1px solid var(--line);font-size:12px;color:var(--ink-2)}
-.oe ul{list-style:none;margin:0;padding:6px 0}
-.oe li{padding:3px 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;color:var(--ink-2)}
-.oe li.l2{padding-left:26px}.oe li.l3{padding-left:40px}.oe li.l4{padding-left:54px}
-.oe button.tbl-item{background:none;border:0;padding:2px 4px;border-radius:4px;cursor:pointer;color:var(--ink);font-family:var(--mono);font-size:12px;text-align:left;overflow:hidden;text-overflow:ellipsis}
-.oe button.tbl-item:hover{background:var(--accent-wash);color:var(--accent-ink)}
 .qwin{display:flex;flex-direction:column;min-width:0}
+.qtabs{display:flex;align-items:stretch;gap:2px;padding:6px 8px 0;background:var(--bg-1);border-bottom:1px solid var(--line);overflow-x:auto}
+.qtab{display:flex;align-items:center;border:1px solid transparent;border-bottom:0;border-radius:6px 6px 0 0;font-size:12.5px;color:var(--ink-2);white-space:nowrap}
+.qtab.on{background:var(--paper);border-color:var(--line);color:var(--ink);margin-bottom:-1px}
+.qtab > button{background:none;border:0;cursor:pointer;padding:6px 4px 6px 10px;font-family:var(--mono);font-size:12px;color:inherit}
+.qtab .x{padding:4px 8px 4px 4px;color:var(--ink-3);font-family:inherit}
+.qtab .x:hover{color:var(--danger)}
+.qtabs .newq{background:none;border:0;cursor:pointer;padding:6px 10px;font-size:12.5px;color:var(--accent-ink);white-space:nowrap}
 .qbar{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line);flex-wrap:wrap}
 .qbar select.input{width:auto;min-width:0;max-width:100%;padding:6px 32px 6px 10px;font-size:13px}
 .editor{width:100%;min-height:190px;border:0;border-bottom:1px solid var(--line);resize:vertical;padding:12px 14px;
-  font-family:var(--mono);font-size:12.5px;line-height:1.6;color:#1f2a37;background:#fff;outline:none;tab-size:4;white-space:pre;overflow:auto}
+  font-family:var(--mono);font-size:12.5px;line-height:1.6;color:var(--ink);background:var(--paper);outline:none;tab-size:4;white-space:pre;overflow:auto}
 .editor:focus{box-shadow:inset 0 0 0 2px var(--accent-wash)}
-.rtabs{display:flex;gap:2px;padding:6px 10px 0;border-bottom:1px solid var(--line);background:#fafbfc}
-.rtabs button{border:1px solid transparent;border-bottom:0;background:none;padding:6px 12px;cursor:pointer;font-size:13px;border-radius:6px 6px 0 0;color:var(--ink-2)}
-.rtabs button[aria-selected="true"]{background:#fff;border-color:var(--line);color:var(--ink);font-weight:600;margin-bottom:-1px}
-.rpane{min-height:120px;max-height:300px;overflow:auto}
+.rtabs{display:flex;gap:2px;padding:6px 10px 0;border-bottom:1px solid var(--line);background:var(--bg-1);align-items:flex-end}
+.rtabs button[role="tab"]{border:1px solid transparent;border-bottom:0;background:none;padding:6px 12px;cursor:pointer;font-size:13px;border-radius:6px 6px 0 0;color:var(--ink-2)}
+.rtabs button[aria-selected="true"]{background:var(--paper);border-color:var(--line);color:var(--ink);font-weight:600;margin-bottom:-1px}
+.rtabs .pin{margin:0 0 5px auto}
+.rpane{min-height:120px;max-height:320px;overflow:auto}
 .rpane table.grid td,.rpane table.grid th{font-size:12.5px;padding:7px 12px}
 .rpane table.grid td{font-family:var(--mono);font-size:12px}
+.rpane .set + .set{border-top:3px solid var(--line)}
+.capnote{padding:6px 12px;font-size:12px;color:var(--warn-ink);background:var(--warn-wash);border-bottom:1px solid var(--warn-line)}
 .msgs{font-family:var(--mono);font-size:12.5px;padding:12px 14px;white-space:pre-wrap;margin:0;color:var(--ink)}
 .msgs .err{color:var(--danger)}
-.status{display:flex;gap:14px;align-items:center;padding:5px 12px;background:#fff4ce;border-top:1px solid #f0dc8c;font-size:12px;color:#5c4a00;flex-wrap:wrap}
-.status.err{background:#fde7e9;border-top-color:#f1b8bd;color:#8a1c22}
+pre.textres{white-space:pre;overflow:visible}
+.status{display:flex;gap:14px;align-items:center;padding:5px 12px;background:var(--status-bg);border-top:1px solid var(--status-line);font-size:12px;color:var(--status-ink);flex-wrap:wrap}
+.status.err{background:var(--serr-bg);border-top-color:var(--serr-line);color:var(--serr-ink)}
 .status span{white-space:nowrap}
 .status .sp{margin-left:auto}
 
@@ -186,23 +249,46 @@ blockquote{margin:0 0 16px;padding:12px 16px;border-left:3px solid var(--accent)
 .causes{max-height:420px;overflow:auto}
 .cause{display:flex;gap:11px;align-items:flex-start;padding:10px 16px;border-bottom:1px solid var(--line);cursor:pointer}
 .cause:last-child{border-bottom:0}
-.cause:hover{background:#fafbfc}
+.cause:hover{background:var(--bg-1)}
 .cause.on{background:var(--accent-wash)}
 .cause input{margin:3px 0 0;width:16px;height:16px;accent-color:var(--accent);flex:0 0 16px}
 .cause code{display:block;color:var(--ink);font-weight:600}
 .cause span{color:var(--ink-2);font-size:13px}
 .verdict{border-radius:var(--r);padding:12px 14px;margin-top:14px;font-size:13.5px;border:1px solid}
-.verdict.ok{background:var(--ok-wash);border-color:#b7e4d3;color:#0d6b4f}
-.verdict.warn{background:var(--warn-wash);border-color:#f0d9a2;color:#7a5410}
-.verdict.bad{background:var(--danger-wash);border-color:#f4c2c3;color:#9b1f23}
+.verdict.ok{background:var(--ok-wash);border-color:var(--ok-line);color:var(--ok-ink)}
+.verdict.warn{background:var(--warn-wash);border-color:var(--warn-line);color:var(--warn-ink)}
+.verdict.bad{background:var(--danger-wash);border-color:var(--danger-line);color:var(--danger-ink)}
 .evid{list-style:none;margin:0;padding:0}
 .evid li{display:flex;gap:10px;align-items:flex-start;padding:8px 0;font-size:13px;border-bottom:1px solid var(--line)}
 .evid li:last-child{border-bottom:0}
-.evid .dot{width:18px;height:18px;border-radius:999px;display:grid;place-items:center;flex:0 0 18px;background:#eef1f4;color:var(--ink-3)}
+.evid .dot{width:18px;height:18px;border-radius:999px;display:grid;place-items:center;flex:0 0 18px;background:var(--bg-3);color:var(--ink-3)}
 .evid li.got .dot{background:var(--ok);color:#fff}
 .evid li:not(.got){color:var(--ink-3)}
 ol.chain{margin:0;padding-left:20px}
 ol.chain li{margin-bottom:8px}
+
+/* ---------- what-if ---------- */
+.radiolist{border:0;margin:0;padding:0;display:grid;gap:6px}
+.radiolist legend{font-weight:600;font-size:13px;margin-bottom:8px;padding:0}
+.radiolist label{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border:1px solid var(--line);border-radius:var(--rs);cursor:pointer;font-size:13px}
+.radiolist label:hover{background:var(--bg-1)}
+.radiolist label.on{border-color:var(--accent);background:var(--accent-wash)}
+.radiolist input{margin:2px 0 0;accent-color:var(--accent)}
+
+/* ---------- notebook, glossary, log viewer ---------- */
+.notelist{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.notelist li{border:1px solid var(--line);border-radius:var(--rs);padding:10px}
+.notelist .meta{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-3);margin-bottom:6px}
+.notelist .meta .iconbtn{margin-left:auto}
+.notelist textarea{font-size:13px;padding:8px 10px}
+.gloss dt{font-weight:650;margin-top:12px}
+.gloss dd{margin:3px 0 0;color:var(--ink-2);font-size:13px}
+.logmsg{font-family:var(--mono);font-size:11.5px;color:var(--ink-2);white-space:normal;line-height:1.5}
+.mtabs{display:flex;gap:4px;padding:10px 18px 0;border-bottom:1px solid var(--line)}
+.mtabs button{border:1px solid transparent;border-bottom:0;background:none;padding:6px 12px;cursor:pointer;font-size:13px;border-radius:6px 6px 0 0;color:var(--ink-2)}
+.mtabs button[aria-selected="true"]{border-color:var(--line);color:var(--ink);font-weight:600;background:var(--paper);margin-bottom:-1px}
+.confirmtxt{flex:2;align-self:center;font-size:13px;color:var(--danger-ink)}
+.panel-err{color:var(--danger-ink);background:var(--danger-wash);border-radius:6px;padding:12px;font-size:13px}
 
 /* charts */
 svg.chart{display:block;width:100%;height:auto;overflow:visible}
@@ -213,14 +299,15 @@ svg.chart .reft{fill:var(--danger);font-weight:600}
 svg.chart .mark{stroke:var(--ink-3);stroke-width:1;stroke-dasharray:3 3}
 svg.chart .bar{transition:opacity .15s}
 svg.chart .bar:hover{opacity:.75}
+svg.chart [data-act]{cursor:pointer}
 svg.chart .lgd{font-size:11px;fill:var(--ink-2)}
-.tt{position:fixed;z-index:200;background:#1e242e;color:#fff;font-size:12px;padding:6px 9px;
+.tt{position:fixed;z-index:400;background:#1e242e;color:#fff;font-size:12px;padding:6px 9px;
   border-radius:5px;pointer-events:none;opacity:0;transition:opacity .1s;white-space:nowrap}
 .tt.on{opacity:1}
 
 /* ---------- coach ---------- */
 .coach{position:fixed;left:50%;transform:translateX(-50%);bottom:20px;z-index:120;
-  background:#12161c;color:#fff;border-radius:12px;box-shadow:var(--shadow-l);
+  background:#12161c;color:#fff;border:1px solid #232a35;border-radius:12px;box-shadow:var(--shadow-l);
   display:flex;align-items:center;gap:14px;padding:12px 14px 12px 18px;width:max-content;max-width:min(780px,94vw)}
 .coach .step{font-size:11px;font-weight:700;letter-spacing:.12em;color:#6cb8f6;text-transform:uppercase}
 .coach .txt{font-size:13.5px;line-height:1.45;color:#dfe5ec}
@@ -229,19 +316,20 @@ svg.chart .lgd{font-size:11px;fill:var(--ink-2)}
 .coach button{border-radius:7px;border:1px solid #2b323d;background:#1b212a;color:#dfe5ec;
   padding:7px 13px;cursor:pointer;font-size:13px;white-space:nowrap}
 .coach button:hover{background:#232a35}
-.coach button.go{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600}
-.coach button.go:hover{background:var(--accent-d)}
+.coach button.go{background:#0078D4;border-color:#0078D4;color:#fff;font-weight:600}
+.coach button.go:hover{background:#106EBE}
 .coach.hide{display:none}
-.guidebtn{position:fixed;right:20px;bottom:20px;z-index:120;border:0;border-radius:999px;
+.guidebtn{position:fixed;right:20px;bottom:20px;z-index:120;border:1px solid #232a35;border-radius:999px;
   background:#12161c;color:#fff;padding:11px 18px;cursor:pointer;font-size:13.5px;box-shadow:var(--shadow-l)}
 .guidebtn:hover{background:#1b212a}
+.guidebtn span{color:#8b95a5}
 .pulse{position:relative;z-index:2}
 .pulse:after{content:"";position:absolute;inset:-5px;border-radius:11px;pointer-events:none;
   box-shadow:0 0 0 2px var(--accent);animation:pl 1.7s ease-out infinite}
 @keyframes pl{0%{opacity:.95;transform:scale(1)}70%{opacity:0;transform:scale(1.045)}100%{opacity:0}}
 
 /* ---------- toast + modal ---------- */
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:104px;z-index:300;
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:104px;z-index:500;
   background:#12161c;color:#fff;padding:11px 17px;border-radius:9px;font-size:13.5px;max-width:min(560px,92vw);
   box-shadow:var(--shadow-l);opacity:0;transition:opacity .2s,transform .2s;pointer-events:none}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(-6px)}
@@ -249,23 +337,25 @@ svg.chart .lgd{font-size:11px;fill:var(--ink-2)}
 .modal{position:fixed;inset:0;z-index:250;background:rgba(12,16,22,.45);display:none;
   align-items:center;justify-content:center;padding:24px}
 .modal.on{display:flex}
-.modal .box{background:#fff;border-radius:12px;box-shadow:var(--shadow-l);width:min(560px,100%);
-  max-height:min(88vh,760px);display:flex;flex-direction:column;overflow:hidden}
-.modal .mh{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
-.modal .mb{padding:6px 0;overflow:auto;overscroll-behavior:contain}
+.modal .box{background:var(--paper);color:var(--ink);border-radius:12px;box-shadow:var(--shadow-l);width:min(560px,100%);
+  max-height:min(88vh,760px);display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.modal .box.wide{width:min(940px,100%)}
+.modal.side{justify-content:flex-end;padding:0}
+.modal.side .box{width:min(440px,100%);height:100%;max-height:none;border-radius:0}
+.modal .mh{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;min-width:0}
+.modal .mh b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.modal .mb{padding:6px 0;overflow:auto;overscroll-behavior:contain;flex:1 1 auto;min-height:0}
 .modal .mb.form{padding:18px 20px 6px}
-.modal .mf{padding:14px 18px;border-top:1px solid var(--line);display:flex;gap:10px}
-.modal .mf .btn{flex:1;justify-content:center}
-.pick{display:flex;align-items:center;gap:11px;padding:11px 18px;cursor:pointer;width:100%;background:none;border:0;text-align:left}
-.pick:hover,.pick:focus-visible{background:#fafbfc}
-.pick .nm{flex:1}
+.modal .mf{padding:14px 18px;border-top:1px solid var(--line);display:flex;gap:10px;flex-wrap:wrap}
+.modal .mf .btn{flex:1;justify-content:center;white-space:nowrap}
+.pick{display:flex;align-items:center;gap:11px;padding:11px 18px;cursor:pointer;width:100%;background:none;border:0;text-align:left;color:inherit}
+.pick:hover,.pick:focus-visible{background:var(--bg-1)}
+.pick .nm{flex:1;min-width:0}
 .searchbox{margin:14px 18px;position:relative}
 .searchbox .input{padding-left:36px}
 .searchbox svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-3)}
-.formerr{color:var(--danger);font-size:13px;margin:0 0 12px}
-.formerr:empty{display:none}
-.summary{background:#fafbfc;border:1px solid var(--line);border-radius:6px;padding:10px 12px;font-size:13px;color:var(--ink-2);margin-bottom:14px}
-kbd{font-family:var(--mono);font-size:12px;border:1px solid var(--line-2);border-bottom-width:2px;border-radius:4px;padding:1px 6px;background:#fafbfc}
+.summary{background:var(--bg-1);border:1px solid var(--line);border-radius:6px;padding:10px 12px;font-size:13px;color:var(--ink-2);margin-bottom:14px}
+kbd{font-family:var(--mono);font-size:12px;border:1px solid var(--line-2);border-bottom-width:2px;border-radius:4px;padding:1px 6px;background:var(--bg-1)}
 
 /* ---------- responsive + motion ---------- */
 @media(max-width:900px){
@@ -275,8 +365,11 @@ kbd{font-family:var(--mono);font-size:12px;border:1px solid var(--line-2);border
 @media(max-width:600px){
   .app{grid-template-columns:minmax(0,1fr)}
   .rail{display:none}
-  .topbar{padding:0 12px}
+  .topbar{padding:0 10px;gap:6px}
   .topbar .avatar{display:none}
+  .topbar .end{gap:0}
+  #restart{padding:6px 8px}
+  #restart .bl{display:none}
   .screen{padding:18px 16px 190px}
   .stepper .lbl{display:none}
   .coach{flex-direction:column;align-items:stretch;left:12px;right:12px;transform:none;bottom:12px;max-width:none;width:auto}
@@ -286,7 +379,8 @@ kbd{font-family:var(--mono);font-size:12px;border:1px solid var(--line-2);border
   .toast{bottom:auto;top:68px}
   .toast.on{transform:translateX(-50%) translateY(4px)}
   .crumbs > a:not(:first-child),.crumbs > .sep{display:none}
-  .topbar .end{gap:4px}
+  .modal{padding:10px}
+  .filterbar .field.date{max-width:none;flex:1}
 }
 @media(prefers-reduced-motion:reduce){
   *,*:before,*:after{transition:none !important;animation:none !important}
@@ -306,18 +400,23 @@ kbd{font-family:var(--mono);font-size:12px;border:1px solid var(--line-2);border
     </div>
     <div id="railnav"></div>
     <div class="spacer"></div>
+    <button class="nav" data-act="glossary" aria-label="Glossary">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2Z"/><path d="M4 19V5M9 7h6M9 11h6"/></svg>
+      <span class="tip">Glossary</span></button>
     <button class="nav" data-act="help" aria-label="Help and keyboard shortcuts">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17h.01"/></svg>
-      <span class="tip">Help</span></button>
+      <span class="tip">Help (?)</span></button>
   </nav>
 
   <div class="main">
     <header class="topbar">
       <nav class="crumbs" id="crumbs" aria-label="Breadcrumb"></nav>
       <div class="end">
-        <button class="btn sm" data-act="restart" id="restart" title="Start the walkthrough again">Restart demo</button>
+        <button class="btn sm" data-act="restart" id="restart" aria-label="Restart demo" title="Start the walkthrough again"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4h4"/></svg><span class="bl">Restart demo</span></button>
+        <button class="iconbtn" data-act="notes" id="notesbtn" aria-label="Investigation notes (N)" title="Investigation notes (N)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M6 3h9l3 3v15H6Z"/><path d="M9 9h6M9 13h6M9 17h4"/></svg><span class="badge" id="notesbadge" hidden></span></button>
         <button class="iconbtn" data-act="search" id="searchbtn" aria-label="Go to a step (Ctrl+K)" title="Go to… (Ctrl+K)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></button>
         <button class="iconbtn" data-act="notifications" id="bellbtn" aria-label="Notifications" title="Notifications"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg></button>
+        <button class="iconbtn" data-act="theme" id="themebtn" aria-label="Switch to dark theme" title="Switch theme"></button>
         <span class="avatar" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span>
       </div>
     </header>
@@ -326,7 +425,7 @@ kbd{font-family:var(--mono);font-size:12px;border:1px solid var(--line-2);border
 </div>
 
 <div class="coach hide" id="coach" role="region" aria-label="Walkthrough guide"></div>
-<button class="guidebtn" id="guidebtn" data-act="showguide" hidden>Show guide</button>
+<button class="guidebtn" id="guidebtn" data-act="showguide" hidden><span>Guide off ·</span> Show guide</button>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modaltitle"></div>
 <div class="tt" id="tt" aria-hidden="true"></div>
@@ -344,8 +443,10 @@ const hm  = s => { s = Math.round(s); return pad(Math.floor(s/3600) % 24) + ':' 
 const hms = s => { s = Math.round(s); return hm(s) + ':' + pad(s % 60); };
 const hdur = s => { s = Math.round(s); return pad(Math.floor(s/3600)) + ':' + pad(Math.floor(s/60) % 60) + ':' + pad(s % 60); };
 const fmtN = (v, d=1) => Number(v).toLocaleString('en-US', {maximumFractionDigits:d});
+const plural = (n, w) => `${fmtN(n, 0)} ${w}${n === 1 ? '' : 's'}`;
 const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const isTyping = el => !!el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable);
 
 const IC = {
   home:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/>',
@@ -358,14 +459,22 @@ const IC = {
   wrench:'<path d="M14.7 6.3a4 4 0 0 0-5.4 5.1L4 16.7 7.3 20l5.3-5.3a4 4 0 0 0 5.1-5.4l-2.5 2.5-2.4-.6-.6-2.4Z"/>',
   check:'<path d="m4.5 12.5 5 5 10-11"/>',
   arrow:'<path d="M4 12h15m-6-6 6 6-6 6"/>',
+  arrowL:'<path d="M20 12H5m6-6-6 6 6 6"/>',
   x:'<path d="m6 6 12 12M18 6 6 18"/>',
   play:'<path d="M7 4.5v15l13-7.5Z"/>',
   search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/>',
-  doc:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/>',
   table:'<rect x="3.5" y="5" width="17" height="14" rx="1.5"/><path d="M3.5 10h17M9 10v9"/>',
   folder:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>',
   server:'<rect x="4" y="4" width="16" height="7" rx="1.5"/><rect x="4" y="13" width="16" height="7" rx="1.5"/><path d="M8 7.5h.01M8 16.5h.01"/>',
-  cal:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>'
+  cal:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',
+  pin:'<path d="M9 4h6l-1 6 3 3H7l3-3Z"/><path d="M12 13v7"/>',
+  trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
+  download:'<path d="M12 4v11m-5-5 5 5 5-5"/><path d="M4 19h16"/>',
+  moon:'<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  hist:'<path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4h4M12 8v4l3 2"/>',
+  text:'<path d="M5 6h14M5 10h14M5 14h9M5 18h11"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>'
 };
 const svg = (p, sz=18, sw=1.8) =>
   `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
@@ -373,6 +482,31 @@ const svg = (p, sz=18, sw=1.8) =>
 function toast(msg, kind){
   const t = $('#toast'); t.textContent = msg; t.className = 'toast on' + (kind === 'err' ? ' err' : '');
   clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('on'), kind === 'err' ? 6000 : 2600);
+}
+/* browser storage is a per-viewer convenience: every call may throw (private mode, blocked site data) */
+const store = {
+  ok: (() => { try { localStorage.setItem('mss.__t', '1'); localStorage.removeItem('mss.__t'); return true; } catch (e) { return false; } })(),
+  get(k, d){ try { const v = localStorage.getItem('mss.' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v){ try { localStorage.setItem('mss.' + k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+};
+function download(name, text, type){
+  const url = URL.createObjectURL(new Blob([text], {type}));
+  const a = document.createElement('a');
+  a.href = url; a.download = name; a.hidden = true;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+/* spreadsheet-safe CSV: quote when needed, and neutralise cells a spreadsheet would run as a formula */
+const csvCell = v => { let s = v === null || v === undefined ? '' : String(v); if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+const toCSV = (cols, rows) => [cols, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
+function sortBy(rows, keyFn, dir){
+  const m = dir === 'desc' ? -1 : 1;
+  return rows.map((r, i) => [r, i]).sort((a, b) => { const x = keyFn(a[0]), y = keyFn(b[0]); return ((x < y ? -1 : x > y ? 1 : 0) * m) || a[1] - b[1]; }).map(p => p[0]);
+}
+/* one panel failing to draw must not take the whole step down */
+function safe(fn, what){
+  try { return fn(); }
+  catch (e) { return `<div class="panel-err" role="alert">The ${esc(what)} could not be drawn: ${esc(e && e.message || e)}</div>`; }
 }
 
 /* ============ deterministic data (seeded, so every run and every test sees the same estate) ============ */
@@ -403,21 +537,25 @@ const PKGS = [
 ];
 const isoOf = ms => new Date(ms).toISOString().slice(0, 10);
 
-function simNight(ms, rnd, overlapOverride){
+/* one nightly run. o.overlap: is IndexOptimize inside the window; o.slow: [min, spread] of the fact-load
+   slowdown while it is; o.speed: a faster or slower server. The rnd() call order is fixed. */
+function simNight(ms, rnd, o={}){
   const d = new Date(ms), iso = isoOf(ms), wd = d.getUTCDay();
   const sunday = wd === 0;
-  const overlap = overlapOverride === undefined ? (sunday && iso >= CHANGE) : overlapOverride;
+  const overlap = o.overlap === undefined ? (sunday && iso >= CHANGE) : o.overlap;
+  const [sa, sb] = o.slow || [1.5, 0.45];
+  const speed = o.speed || 1;
   const vol = sunday ? 1.08 : 1;              // the Sunday run loads Saturday's trading, the busiest day
-  const slow = overlap ? 1.5 + rnd() * 0.45 : 1;
+  const slow = overlap ? sa + rnd() * sb : 1;
   let t = 3600;
   const pk = PKGS.map(p => {
     const f = (p.layer === 'Dimension' ? 1 : vol) * (p.layer === 'Fact' ? slow : 1);
-    const dur = Math.round(p.base * 60 * f * (0.94 + rnd() * 0.12));
+    const dur = Math.round(p.base * 60 * f * (0.94 + rnd() * 0.12) * speed);
     const r = {n:p.n, layer:p.layer, start:t, dur};
     t += dur + 20;
     return r;
   });
-  const ssas = {start:t, dur:Math.round(38 * 60 * vol * (0.94 + rnd() * 0.12))};
+  const ssas = {start:t, dur:Math.round(38 * 60 * vol * (0.94 + rnd() * 0.12) * speed)};
   t += ssas.dur + 20;
   const end = t + 110;                        // step 4: refresh report cache
   return {iso, wd, sunday, overlap, pk, ssas, end, late:end > SLA};
@@ -426,63 +564,85 @@ const NIGHTS = (() => {
   const rnd = mulberry32(20418);
   return Array.from({length:N_NIGHTS}, (_, i) => Object.assign(simNight(START + i * 864e5, rnd), {i}));
 })();
+const nightOf = iso => NIGHTS.find(n => n.iso === iso) || null;
 const SUNDAYS = NIGHTS.filter(n => n.sunday);
 const LATE = NIGHTS.filter(n => n.late);
 const LAST_LATE = LATE[LATE.length - 1];
+const LAST_WED = NIGHTS.filter(n => n.wd === 3).slice(-1)[0];
 const ONTIME_SUNDAY = SUNDAYS.filter(n => !n.late).slice(-1)[0];
-const AFTER_FIX = (() => {
-  const rnd = mulberry32(911);
-  const firstSun = SUNDAYS[SUNDAYS.length - 1].i + 7;
-  return [0, 1, 2, 3].map(k => simNight(START + (firstSun + k * 7) * 864e5, rnd, false));
-})();
+const NEXT_SUNDAYS = [0, 1, 2, 3].map(k => START + (SUNDAYS[SUNDAYS.length - 1].i + 7 + k * 7) * 864e5);
+const AFTER_FIX = (() => { const rnd = mulberry32(911); return NEXT_SUNDAYS.map(ms => simNight(ms, rnd, {overlap:false})); })();
 function avgBefore(i, pkgIdx){
   const from = Math.max(0, i - 28), rows = NIGHTS.slice(from, i);
   if (!rows.length) return NIGHTS[i].pk[pkgIdx].dur;
   return rows.reduce((a, n) => a + n.pk[pkgIdx].dur, 0) / rows.length;
 }
+/* the four Agent job steps of one run */
+function jobSteps(n){
+  const pe = p => p.start + p.dur;
+  return [
+    {id:1, name:'Extract sources (SSIS)', start:n.pk[0].start, end:pe(n.pk[2]), kind:'ssis'},
+    {id:2, name:'Load EDW (SSIS)', start:n.pk[3].start, end:pe(n.pk[8]), kind:'ssis'},
+    {id:3, name:'Process MRH_Sales cube (SSAS)', start:n.ssas.start, end:n.ssas.start + n.ssas.dur, kind:'ssas'},
+    {id:4, name:'Refresh report cache (T-SQL)', start:n.ssas.start + n.ssas.dur + 20, end:n.end, kind:'tsql'}
+  ];
+}
 const ymd = iso => Number(iso.replace(/-/g, ''));
 const hmsInt = s => { s = Math.round(s); return Math.floor(s/3600) * 10000 + Math.floor(s/60 % 60) * 100 + s % 60; };
 
-/* evidence tables the SSMS window can answer from */
+/* ---- evidence tables the SSMS window can query ---- */
+const COMMANDLOG_COLS = ['ID','DatabaseName','SchemaName','ObjectName','IndexName','PartitionNumber','CommandType','Command','StartTime','EndTime'];
 const COMMANDLOG = (() => {
-  const d = LAST_LATE.iso;
-  const items = [
-    ['FactSales', 'PK_FactSales', 'ALTER_INDEX', 1804, 4956],
-    ['FactSales', 'IX_FactSales_StoreDate', 'ALTER_INDEX', 4957, 7695],
-    ['FactInventorySnapshot', 'PK_FactInventorySnapshot', 'ALTER_INDEX', 7696, 10862],
-    ['FactWebClickstream', 'PK_FactWebClickstream', 'ALTER_INDEX', 10863, 14387],
-    ['FactWebClickstream', 'IX_FactWebClickstream_Session', 'ALTER_INDEX', 14388, 15250],
-    ['DimProduct', '', 'UPDATE_STATISTICS', 15251, 15390]
-  ];
-  return items.map((x, k) => [48210 + k, 'EDW', 'dw', x[0], x[1] || 'NULL', x[2],
-    x[2] === 'ALTER_INDEX'
-      ? `ALTER INDEX [${x[1]}] ON [EDW].[dw].[${x[0]}] REBUILD PARTITION = 21 WITH (SORT_IN_TEMPDB = OFF, ONLINE = OFF)`
-      : `UPDATE STATISTICS [EDW].[dw].[${x[0]}] WITH FULLSCAN`,
-    `${d} ${hms(x[3])}.000`, `${d} ${hms(x[4])}.000`]);
+  const rnd = mulberry32(4821), rows = [];
+  let id = 47100;
+  const items = [['FactSales','PK_FactSales',3152],['FactSales','IX_FactSales_StoreDate',2738],['FactInventorySnapshot','PK_FactInventorySnapshot',3166],
+                 ['FactWebClickstream','PK_FactWebClickstream',3524],['FactWebClickstream','IX_FactWebClickstream_Session',862]];
+  NIGHTS.forEach(n => {
+    if (n.wd === 6) {                         // Saturday 22:00 CHECKDB, before the window
+      const s = 79200, e = s + 5700 + Math.round(rnd() * 300);
+      rows.push([id++, 'EDW', null, null, null, null, 'DBCC_CHECKDB', 'DBCC CHECKDB ([EDW]) WITH NO_INFOMSGS, ALL_ERRORMSGS, DATA_PURITY', `${n.iso} ${hms(s)}.000`, `${n.iso} ${hms(e)}.000`]);
+    }
+    if (!n.sunday) return;
+    const part = 16 + Number(n.iso.slice(5, 7));
+    let t = n.overlap ? 1804 : 32404;         // 00:30:04 since the change, 09:00:04 before it
+    items.forEach(([obj, ix, dur]) => {
+      const d = n.iso === LAST_LATE.iso ? dur : Math.round(dur * (0.95 + rnd() * 0.1));
+      rows.push([id++, 'EDW', 'dw', obj, ix, part, 'ALTER_INDEX',
+        `ALTER INDEX [${ix}] ON [EDW].[dw].[${obj}] REBUILD PARTITION = ${part} WITH (SORT_IN_TEMPDB = OFF, ONLINE = OFF)`,
+        `${n.iso} ${hms(t)}.000`, `${n.iso} ${hms(t + d)}.000`]);
+      t += d + 1;
+    });
+    rows.push([id++, 'EDW', 'dw', 'DimProduct', null, null, 'UPDATE_STATISTICS', 'UPDATE STATISTICS [EDW].[dw].[DimProduct] WITH FULLSCAN',
+      `${n.iso} ${hms(t)}.000`, `${n.iso} ${hms(t + 139)}.000`]);
+  });
+  return rows;
 })();
-const COMMANDLOG_COLS = ['ID','DatabaseName','SchemaName','ObjectName','IndexName','CommandType','Command','StartTime','EndTime'];
-const SCHED_COLS = ['job_name','schedule_name','freq_type','freq_interval','active_start_time','date_modified'];
-const SCHED = [
-  ['MRH - DatabaseBackup - FULL', 'Nightly 00:00', 4, 1, 0, '2025-11-03 10:12:44.000'],
-  [MAINT, 'Weekly - Sunday', 8, 1, 3000, '2026-07-17 16:42:09.000'],
-  [JOB, 'Nightly 01:00', 4, 1, 10000, '2025-02-20 09:30:15.000'],
-  ['MRH - DatabaseIntegrityCheck', 'Weekly - Saturday', 8, 64, 220000, '2025-11-03 10:14:02.000']
-];
+const JOB_IDS = {[JOB]:'6F1C2A10-5B8E-4C8D-9A33-0B7E3D0C1A01', [MAINT]:'0C8A77E2-91D4-4F56-B7A1-5E2C9D8F4B12',
+  'MRH - DatabaseBackup - FULL':'A43B1D98-2E6F-47C0-8B5D-3F9E1C7A6D23', 'MRH - DatabaseIntegrityCheck':'D2E5F0B7-7C13-4A9E-A6F8-1B4D2C3E5F34'};
 const JOBS_COLS = ['job_id','name','enabled','owner_login_name','date_modified'];
 const JOBS = [
-  ['6F1C2A10-5B8E-4C8D-9A33-0B7E3D0C1A01', JOB, 1, 'MRH\\svc_sqlagent', '2025-02-20 09:30:15.000'],
-  ['0C8A77E2-91D4-4F56-B7A1-5E2C9D8F4B12', MAINT, 1, 'MRH\\svc_sqlagent', '2026-07-17 16:42:09.000'],
-  ['A43B1D98-2E6F-47C0-8B5D-3F9E1C7A6D23', 'MRH - DatabaseBackup - FULL', 1, 'MRH\\svc_sqlagent', '2025-11-03 10:12:44.000'],
-  ['D2E5F0B7-7C13-4A9E-A6F8-1B4D2C3E5F34', 'MRH - DatabaseIntegrityCheck', 1, 'MRH\\svc_sqlagent', '2025-11-03 10:14:02.000']
+  [JOB_IDS[JOB], JOB, 1, 'MRH\\svc_sqlagent', '2025-02-20 09:30:15.000'],
+  [JOB_IDS[MAINT], MAINT, 1, 'MRH\\svc_sqlagent', '2026-07-17 16:42:09.000'],
+  [JOB_IDS['MRH - DatabaseBackup - FULL'], 'MRH - DatabaseBackup - FULL', 1, 'MRH\\svc_sqlagent', '2025-11-03 10:12:44.000'],
+  [JOB_IDS['MRH - DatabaseIntegrityCheck'], 'MRH - DatabaseIntegrityCheck', 1, 'MRH\\svc_sqlagent', '2025-11-03 10:14:02.000']
+];
+const SCHED_COLS = ['schedule_id','job_id','name','enabled','freq_type','freq_interval','active_start_time','date_modified'];
+const SCHED = [
+  [9, JOB_IDS['MRH - DatabaseBackup - FULL'], 'Nightly 00:00', 1, 4, 1, 0, '2025-11-03 10:12:44.000'],
+  [14, JOB_IDS[MAINT], 'Weekly - Sunday', 1, 8, 1, 3000, '2026-07-17 16:42:09.000'],
+  [12, JOB_IDS[JOB], 'Nightly 01:00', 1, 4, 1, 10000, '2025-02-20 09:30:15.000'],
+  [15, JOB_IDS['MRH - DatabaseIntegrityCheck'], 'Weekly - Saturday', 1, 8, 64, 220000, '2025-11-03 10:14:02.000']
 ];
 const HIST_COLS = ['instance_id','step_id','step_name','run_status','run_date','run_time','run_duration','message'];
 const HISTORY = NIGHTS.slice().reverse().map(n => [
   900000 + n.i * 5, 0, '(Job outcome)', 1, ymd(n.iso), 10000, hmsInt(n.end - 3600),
   'The job succeeded.  The Job was invoked by Schedule 12 (Nightly 01:00).  The last step to run was step 4 (Refresh report cache).'
 ]);
-function perfNight(n, seed){
-  const rnd = mulberry32(seed);
-  return Array.from({length:10}, (_, h) => {
+const PERF_CACHE = new Map();
+function perfOf(n){
+  if (PERF_CACHE.has(n.i)) return PERF_CACHE.get(n.i);
+  const rnd = mulberry32(5000 + n.i);
+  const v = Array.from({length:10}, (_, h) => {
     const busy = n.overlap && h >= 1 && h < 5;
     const after = n.overlap && h >= 5 && h < Math.ceil(n.end / 3600);
     return {h,
@@ -491,15 +651,17 @@ function perfNight(n, seed){
       ple: Math.round(busy ? 300 + rnd() * 420 : after ? 1400 + rnd() * 500 : 3100 + h * 60 + rnd() * 400),
       disk: +(7.4 + rnd() * 1.4).toFixed(1)};
   });
+  PERF_CACHE.set(n.i, v);
+  return v;
 }
-const PERF_LATE = perfNight(LAST_LATE, 31);
-const PERF_WED = perfNight(NIGHTS.filter(n => n.wd === 3).slice(-1)[0], 32);
-const PERF_COLS = ['object_name','counter_name','sample_time','cntr_value'];
-const PERF_ROWS = PERF_LATE.flatMap(p => [
-  ['SQLServer:Locks', 'Lock Waits/sec', `${LAST_LATE.iso} ${pad(p.h)}:00:00`, p.lock],
-  ['SQLServer:General Statistics', 'Processes blocked', `${LAST_LATE.iso} ${pad(p.h)}:00:00`, p.blocked],
-  ['SQLServer:Buffer Manager', 'Page life expectancy', `${LAST_LATE.iso} ${pad(p.h)}:00:00`, p.ple]
-]);
+const PERF_COLS = ['server_name','object_name','counter_name','sample_time','cntr_value'];
+const PERF_ROWS = NIGHTS.flatMap(n => perfOf(n).flatMap(p => {
+  const ts = `${n.iso} ${pad(p.h)}:00:00.000`;
+  return [['MRH-SQLDW01', 'SQLServer:Locks', 'Lock Waits/sec', ts, p.lock],
+          ['MRH-SQLDW01', 'SQLServer:General Statistics', 'Processes blocked', ts, p.blocked],
+          ['MRH-SQLDW01', 'SQLServer:Buffer Manager', 'Page life expectancy', ts, p.ple],
+          ['MRH-SQLDW01', 'LogicalDisk', 'Avg. Disk sec/Read', ts, +(p.disk / 1000).toFixed(4)]];
+}));
 const TABLES = {
   'infra.commandlog':     {cols:COMMANDLOG_COLS, rows:COMMANDLOG, label:'infra.CommandLog'},
   'infra.sysjobs':        {cols:JOBS_COLS, rows:JOBS, label:'infra.sysjobs'},
@@ -551,6 +713,51 @@ const WHY = {
 };
 const WHY_DEFAULT = 'The evidence does not point there. Look again at what runs at 00:30 on Sundays, and since when.';
 
+/* fixes to try on the Fix step, each simulated on the next four Sundays */
+const WHATIF = {
+  schedule:{label:'Move IndexOptimize to Sunday 09:00', o:{overlap:false}, seed:911, verdict:'pass',
+    why:'The rebuild no longer overlaps the refresh, so nothing holds locks on the fact partitions while the loads run.'},
+  online:{label:'Keep 00:30, but rebuild with ONLINE = ON', o:{overlap:true, slow:[1.2, 0.3]}, seed:912, verdict:'partial',
+    why:'Online rebuilds take only brief locks, so the loads stop queueing behind them, but both still compete for IO and the buffer pool from 01:00 to about 05:00.'},
+  frag:{label:'Keep 00:30, rebuild only fragmented partitions (@FragmentationLevel2 = 30)', o:{overlap:true, slow:[1.13, 0.3]}, seed:916, verdict:'partial',
+    why:'Fewer indexes are rebuilt, so the overlap is shorter, but the newest partitions (the ones the loads write to) are the most fragmented and are still rebuilt offline inside the window.'},
+  retry:{label:'Add a retry to the Load step', o:{overlap:true}, seed:914, verdict:'fail',
+    why:'The job never fails, so a retry never fires. It would only make a real failure take longer to report.'},
+  scale:{label:'Scale up MRH-SQLDW01 (more CPU and memory)', o:{overlap:true, speed:0.9}, seed:915, verdict:'fail',
+    why:'The loads are waiting on a lock, not on CPU or memory. A bigger server makes everything a little faster and Sundays are still late.'}
+};
+const WHATIF_CACHE = {};
+function whatIf(kind){
+  if (!has(WHATIF, kind)) return null;
+  if (!WHATIF_CACHE[kind]) {
+    const w = WHATIF[kind], rnd = mulberry32(w.seed);
+    const runs = NEXT_SUNDAYS.map(ms => simNight(ms, rnd, w.o));
+    WHATIF_CACHE[kind] = {kind, label:w.label, verdict:w.verdict, why:w.why, runs, late:runs.filter(r => r.late).length};
+  }
+  return WHATIF_CACHE[kind];
+}
+
+const GLOSSARY = [
+  ['SLA', 'The time the numbers must be ready: 07:00, when the regional managers log in.'],
+  ['ETL window', 'The protected time the nightly refresh runs in, 01:00 to 07:00. Nothing heavy should run inside it.'],
+  ['SQL Server Agent job', 'A scheduled set of steps. The refresh is one job with four steps: extract, load, process the cube, refresh the report cache.'],
+  ['run_status', 'Outcome of a job or step in sysjobhistory: 0 failed, 1 succeeded, 2 retry, 3 cancelled. A late job still shows 1.'],
+  ['run_duration', 'How long a run took, stored as an integer HHMMSS: 71502 means 7 h 15 min 2 s.'],
+  ['active_start_time', 'When a schedule fires, as an integer HHMMSS: 3000 is 00:30:00 and 10000 is 01:00:00.'],
+  ['SSISDB / catalog.executions', 'The Integration Services catalog: one row per package run, with start and end times.'],
+  ['28-night average', 'The mean duration over the 28 nights before the one you look at. A ratio well above 1.0× means that night was unusually slow.'],
+  ['IndexOptimize', 'Ola Hallengren\'s index maintenance procedure. It rebuilds or reorganises fragmented indexes and logs each command to CommandLog.'],
+  ['CommandLog', 'The table where Ola Hallengren\'s scripts log every command they ran, with start and end times.'],
+  ['ONLINE = OFF', 'An offline index rebuild. It holds a schema-modification (Sch-M) lock on the partition for the whole rebuild, so every other query on it waits.'],
+  ['ONLINE = ON', 'An online rebuild (Enterprise edition). It takes only brief locks at the start and end, but still uses IO, CPU and memory.'],
+  ['Sch-M lock', 'Schema-modification lock. Nothing else can read or write the object while it is held.'],
+  ['Lock Waits/sec', 'Perfmon counter: how many lock requests per second had to wait. Near zero on a healthy night.'],
+  ['Processes blocked', 'Perfmon counter: sessions currently waiting on a lock held by someone else.'],
+  ['Page life expectancy', 'How long, in seconds, a page stays in the buffer pool. A sudden drop means something is churning memory, like a large rebuild.'],
+  ['Partition', 'A slice of a large table, here one per month. The newest partition is the one the nightly load writes to.'],
+  ['maintenance_overlap', 'The lab\'s root-cause key for maintenance (index rebuilds, statistics, backups) running inside the ETL window.']
+];
+
 /* ============ state ============ */
 const ORDER = ['ticket','agent','ssis','sql','perf','diagnose','fix'];
 const STEP_LABELS = ['Ticket','Job history','SSIS catalog','Query','Perfmon','Diagnose','Fix'];
@@ -569,19 +776,37 @@ SELECT j.name AS job_name, s.name AS schedule_name, s.freq_type, s.freq_interval
 FROM   infra.sysjobs AS j
 JOIN   infra.sysjobschedules AS s ON s.job_id = j.job_id
 WHERE  j.name LIKE 'MRH - %'
-ORDER  BY s.active_start_time;`}
+ORDER  BY s.active_start_time;`},
+  before:{label:'When did IndexOptimize run before the change?', sql:
+`-- Sunday rebuilds before and after ${CHANGE}: compare the start times
+SELECT CommandType, MIN(StartTime) AS first_run, MAX(StartTime) AS last_run, COUNT(*) AS commands
+FROM   infra.CommandLog
+WHERE  CommandType = 'ALTER_INDEX' AND StartTime < '${CHANGE}'
+GROUP  BY CommandType;`},
+  late:{label:'Late nights by weekday (sysjobhistory)', sql:
+`-- run_duration is HHMMSS; the job starts 01:00, so more than 60000 finishes after 07:00
+SELECT run_date, run_duration
+FROM   infra.sysjobhistory
+WHERE  step_id = 0 AND run_duration > 60000
+ORDER  BY run_date DESC;`}
 };
+const MAX_TABS = 8, MAX_HISTORY = 30, ROW_CAP = 1000;
 function initState(){
   return {
-    screen:'ticket', coachOn:true, visited:{ticket:true},
+    screen:'ticket', coachOn:store.get('coachOn', true) !== false, visited:{ticket:true},
     agent:{day:'All', lateOnly:false},
+    hist:{from:'', to:'', sort:{key:'run_date', dir:'desc'}},
     ssis:{date:LAST_LATE.iso, compared:false},
-    sql:{text:TOOLKIT.commandlog.sql, preset:'commandlog', result:null, tab:'results', seen:{}},
+    ssisX:{sundaysOnly:true, sort:{key:'start', dir:'asc'}},
+    sql:{tabs:[{id:1, title:'SQLQuery1.sql', text:TOOLKIT.commandlog.sql, preset:'commandlog', result:null, tab:'results'}],
+         active:0, seq:1, seen:{}, history:[], textMode:false, oe:{}},
+    perf:{c1:'lock', c2:'ple', a:LAST_LATE.iso, b:LAST_WED.iso},
     diag:{picked:[], filter:'', verdict:null, attempts:0},
-    fix:null
+    fix:null, whatif:null
   };
 }
 let S = initState();
+const curTab = () => S.sql.tabs[S.sql.active] || S.sql.tabs[0];
 
 /* ============ charts (hand-rolled SVG) ============ */
 function ticks(max, min=0){
@@ -599,9 +824,8 @@ function cw(half){
   const w = half && inner > 1000 ? (inner - 16) / 2 : inner;
   return Math.max(300, Math.round(w - 34));
 }
-const hLabel = h => pad(Math.floor(h)) + ':' + pad(Math.round((h % 1) * 60));
 
-/* completion time of every night; the SLA as a red line */
+/* completion time of every night; the SLA as a red line; each dot opens that run */
 function chNights(nights, o){
   const W = cw(false), H = 260, L = 44, R = 12, T = 14, B = 30;
   const lo = 5, hi = Math.max(10, Math.ceil(Math.max(...nights.map(n => n.end / 3600))));
@@ -617,8 +841,8 @@ function chNights(nights, o){
   s += `<line class="ref" x1="${L}" x2="${W-R}" y1="${Y(7)}" y2="${Y(7)}"/><text class="reft" x="${W-R}" y="${Y(7)-5}" text-anchor="end">SLA 07:00</text>`;
   nights.forEach((n, i) => {
     const on = o.match(n);
-    const col = !on ? '#cfd6de' : n.late ? 'var(--danger)' : 'var(--accent)';
-    s += `<circle class="bar" cx="${X(i)}" cy="${Y(n.end/3600)}" r="${on ? 3.4 : 2.2}" fill="${col}" data-t="${DAYS[n.wd].slice(0,3)} ${n.iso} · finished ${hm(n.end)}"/>`;
+    const col = !on ? 'var(--chart-dim)' : n.late ? 'var(--danger)' : 'var(--accent)';
+    s += `<circle class="bar" cx="${X(i)}" cy="${Y(n.end/3600)}" r="${on ? 3.6 : 2.4}" fill="${col}" data-act="jobRun" data-arg="${n.iso}" data-t="${DAYS[n.wd].slice(0,3)} ${n.iso} · finished ${hm(n.end)} · click for the steps"/>`;
   });
   return s + '</svg>';
 }
@@ -632,7 +856,7 @@ function chRatio(rows){
   rows.forEach((r, i) => {
     const y = 6 + i * rowH, col = r.v >= 1.3 ? 'var(--danger)' : 'var(--accent)';
     s += `<text x="${L-8}" y="${y+12}" text-anchor="end">${esc(r.k)}</text>
-      <rect class="bar" x="${L}" y="${y}" width="${Math.max(1, X(r.v) - L)}" height="${rowH-8}" rx="2" fill="${col}" data-t="${esc(r.k)}: ${r.v.toFixed(2)}× its average"/>
+      <rect class="bar" x="${L}" y="${y}" width="${Math.max(1, X(r.v) - L)}" height="${rowH-8}" rx="2" fill="${col}" data-act="pkg" data-arg="${r.idx}" data-t="${esc(r.k)}: ${r.v.toFixed(2)}× its average · click for messages"/>
       <text x="${X(r.v)+5}" y="${y+12}">${r.v.toFixed(2)}×</text>`;
   });
   return s + '</svg>';
@@ -642,34 +866,35 @@ function chLine(series, o={}){
   const W = cw(true), H = o.h || 220, L = 46, R = 10, T = 12, B = 36;
   const labels = series[0].pts.map(p => p.k);
   const all = series.flatMap(s => s.pts.map(p => p.v));
-  const tk = ticks(Math.max(...all), 0), hi = tk[tk.length-1], lo = tk[0];
+  const tk = ticks(Math.max(...all, 0.001), 0), hi = tk[tk.length-1], lo = tk[0];
   const X = i => L + (W - L - R) * (i / (labels.length - 1));
   const Y = v => T + (H - T - B) * (1 - (v - lo) / ((hi - lo) || 1));
   let s = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label || 'Line chart')}">`;
-  tk.forEach(t => s += `<line class="axl" x1="${L}" x2="${W-R}" y1="${Y(t)}" y2="${Y(t)}"/><text x="${L-7}" y="${Y(t)+3.5}" text-anchor="end">${fmtN(t, 0)}</text>`);
+  tk.forEach(t => s += `<line class="axl" x1="${L}" x2="${W-R}" y1="${Y(t)}" y2="${Y(t)}"/><text x="${L-7}" y="${Y(t)+3.5}" text-anchor="end">${fmtN(t, 1)}</text>`);
   const every = (W - L - R) / labels.length < 44 ? 2 : 1;
   labels.forEach((l, i) => { if (i % every === 0) s += `<text x="${X(i)}" y="${H-B+15}" text-anchor="middle">${esc(l)}</text>`; });
   series.forEach(se => {
     const d = se.pts.map((p, i) => `${i ? 'L' : 'M'}${X(i)},${Y(p.v)}`).join(' ');
-    s += `<path d="${d}" fill="none" stroke="${se.color}" stroke-width="2.2" stroke-linejoin="round"/>`;
+    s += `<path d="${d}" fill="none" stroke="${se.color}" stroke-width="2.2" stroke-linejoin="round"${se.dash ? ' stroke-dasharray="6 4"' : ''}/>`;
     se.pts.forEach((p, i) => s += `<circle class="bar" cx="${X(i)}" cy="${Y(p.v)}" r="3.2" fill="${se.color}" data-t="${esc(se.name)} ${esc(p.k)}: ${fmtN(p.v)}"/>`);
   });
   s += series.map((se, si) => `<g><rect x="${L + si*Math.min(190, (W - L) / 2)}" y="${H-10}" width="9" height="9" rx="2" fill="${se.color}"/><text class="lgd" x="${L + si*Math.min(190, (W - L) / 2) + 14}" y="${H-2}">${esc(se.name)}</text></g>`).join('');
   return s + '</svg>';
 }
-/* Sunday completion columns, before and after the fix */
-function chSundays(list){
+/* Sunday completion columns, with the SLA */
+function chSundays(list, label){
   const W = cw(false), H = 230, L = 44, R = 10, T = 14, B = 34;
   const lo = 5, hi = Math.max(10, Math.ceil(Math.max(...list.map(x => x.end / 3600))));
   const Y = h => T + (H - T - B) * (1 - (h - lo) / (hi - lo));
   const bw = (W - L - R) / list.length;
-  let s = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Sunday completion times before and after the schedule change">`;
+  const lab = label || (x => x.after ? 'after' : 'before');
+  let s = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Sunday completion times against the 07:00 SLA">`;
   for (let h = lo; h <= hi; h++) s += `<line class="axl" x1="${L}" x2="${W-R}" y1="${Y(h)}" y2="${Y(h)}"/><text x="${L-7}" y="${Y(h)+3.5}" text-anchor="end">${pad(h)}:00</text>`;
   list.forEach((x, i) => {
     const cx = L + bw * i, y = Y(x.end / 3600);
-    s += `<rect class="bar" x="${cx + bw*.2}" y="${y}" width="${bw*.6}" height="${Y(lo) - y}" rx="2" fill="${x.late ? 'var(--danger)' : 'var(--ok)'}" data-t="${x.iso} · ${x.after ? 'after' : 'before'} the fix · ${hm(x.end)}"/>
+    s += `<rect class="bar" x="${cx + bw*.2}" y="${y}" width="${bw*.6}" height="${Y(lo) - y}" rx="2" fill="${x.late ? 'var(--danger)' : 'var(--ok)'}" data-t="${x.iso} · ${esc(lab(x))} · ${hm(x.end)}"/>
       <text x="${cx + bw/2}" y="${H-B+14}" text-anchor="middle">${x.iso.slice(5)}</text>
-      <text x="${cx + bw/2}" y="${H-B+27}" text-anchor="middle">${x.after ? 'after' : 'before'}</text>`;
+      <text x="${cx + bw/2}" y="${H-B+27}" text-anchor="middle">${esc(lab(x))}</text>`;
   });
   s += `<line class="ref" x1="${L}" x2="${W-R}" y1="${Y(7)}" y2="${Y(7)}"/><text class="reft" x="${W-R}" y="${Y(7)-5}" text-anchor="end">SLA 07:00</text>`;
   return s + '</svg>';
@@ -691,16 +916,18 @@ const SCREEN_META = {
   diagnose:{icon:'target', rail:'Diagnose',        crumb:'Root cause'},
   fix:     {icon:'wrench', rail:'Fix & debrief',   crumb:'Fix & debrief'}
 };
+const crumbOf = k => k === 'sql' ? 'SSMS · ' + curTab().title : SCREEN_META[k].crumb;
 function chrome(){
   $('#railnav').innerHTML = ORDER.map(k =>
     `<button class="nav ${S.screen === k ? 'on' : ''}" data-go="${k}" aria-label="${esc(SCREEN_META[k].rail)}"${S.screen === k ? ' aria-current="page"' : ''}>
        ${svg(IC[SCREEN_META[k].icon])}<span class="tip">${esc(SCREEN_META[k].rail)}</span></button>`).join('');
-  const cr = [['Incidents', 'ticket'], ...(S.screen === 'ticket' ? [] : [['INC-20418', 'ticket']]), [SCREEN_META[S.screen].crumb, null]];
+  const cr = [['Incidents', 'ticket'], ...(S.screen === 'ticket' ? [] : [['INC-20418', 'ticket']]), [crumbOf(S.screen), null]];
   $('#crumbs').innerHTML = `<a data-go="ticket" aria-label="Home" role="link" tabindex="0">${svg(IC.home, 17)}</a>` +
     cr.map(([txt, go], i) => `<span class="sep">${svg(IC.arrow, 13, 2)}</span>` +
       (i === cr.length - 1 ? `<span class="now" aria-current="page">${esc(txt)}</span>`
                            : `<a data-go="${go}" role="link" tabindex="0">${esc(txt)}</a>`)).join('');
   document.title = `${SCREEN_META[S.screen].rail} — MSS Sim walkthrough`;
+  paintBadge();
 }
 function stepper(){
   const cur = ORDER.indexOf(S.screen);
@@ -713,30 +940,42 @@ function stepper(){
   }).join('') + `</nav>`;
 }
 const head = (title, sub) => `${stepper()}<h1 class="title" tabindex="-1">${esc(title)}</h1><p class="sub">${sub}</p>`;
+const pinBtn = (text, id) => `<button class="pin"${id ? ` id="${id}"` : ''} data-act="pin" data-arg="${esc(text)}" aria-label="Pin to notes" title="Pin this finding to your notes">${svg(IC.pin, 13)} Pin</button>`;
+/* cells are escaped text, or {html} built by this page */
+const cellHTML = v => v !== null && typeof v === 'object' && has(v, 'html') ? v.html : v === null ? '<i>NULL</i>' : esc(v);
 function tableHTML(cols, rows, opts={}){
-  if (!rows.length) return `<div class="tbl"><table class="grid"><thead><tr>${cols.map(c => `<th scope="col">${esc(c)}</th>`).join('')}</tr></thead>
+  const th = (c, i) => {
+    const key = opts.sortKeys && opts.sortKeys[i];
+    if (!key) return `<th scope="col">${esc(c)}</th>`;
+    const on = opts.sort.key === key, dir = opts.sort.dir;
+    return `<th scope="col"${on ? ` aria-sort="${dir === 'asc' ? 'ascending' : 'descending'}"` : ''}><button class="sortbtn" id="sort-${opts.sortId}-${key}" data-act="sort" data-arg="${opts.sortId}:${key}">${esc(c)}<span class="ar" aria-hidden="true">${on ? (dir === 'asc' ? '▲' : '▼') : '↕'}</span></button></th>`;
+  };
+  const headRow = `<thead><tr>${cols.map(th).join('')}</tr></thead>`;
+  if (!rows.length) return `<div class="tbl"><table class="grid">${headRow}
     <tbody><tr><td class="empty" colspan="${cols.length}">${esc(opts.empty || 'No rows.')}</td></tr></tbody></table></div>`;
-  return `<div class="tbl${opts.tall ? ' tall' : ''}"><table class="grid"><thead><tr>${cols.map(c => `<th scope="col">${esc(c)}</th>`).join('')}</tr></thead><tbody>` +
-    rows.map((r, ri) => `<tr${opts.hl && opts.hl(ri) ? ' class="hl"' : ''}>` + r.map(v => `<td class="num">${v === null ? '<i>NULL</i>' : esc(v)}</td>`).join('') + `</tr>`).join('') +
+  return `<div class="tbl${opts.tall ? ' tall' : ''}"><table class="grid">${headRow}<tbody>` +
+    rows.map((r, ri) => `<tr${opts.hl && opts.hl(ri) ? ' class="hl"' : ''}>` + r.map((v, ci) => `<td class="num${opts.wrap && opts.wrap(ci) ? ' wrap' : ''}">${cellHTML(v)}</td>`).join('') + `</tr>`).join('') +
     `</tbody></table></div>`;
 }
 
 /* ============ screens ============ */
 function scTicket(){
+  const open = (go, label) => ({html:`<button class="linkbtn" data-go="${go}">${esc(label)}</button>`});
   return head('INC-20418 · Monday dashboards not ready (again)',
-    'A real ticket from the simulator (lab 07). You will prove why the refresh is late, name the root cause and fix it, using the same evidence a DBA would query at the client.') +
+    'A real ticket from the simulator (lab 07). You will prove why the refresh is late, name the root cause and fix it, using the same evidence a DBA would query at the client. Follow the guide, or explore on your own: every table, chart and query below is live.') +
   `<div class="two">
     <div class="card"><div class="ch"><span class="chip bad">P2</span><span class="chip grey">EDW nightly refresh</span><span class="chip grey">Raised by: Head of Retail Operations</span></div>
       <div class="cb">
         <blockquote>For the last month or two the Sunday morning numbers are never there when the regional managers log in at 07:00. The rest of the week is fine. Nobody changed anything in the reports. Can you find out why and tell us what needs to change?</blockquote>
         <h2 class="sec">What you have (production evidence, last ${N_NIGHTS} nights)</h2>
-        ${tableHTML(['Evidence','Where'], [
-          ['SQL Agent jobs and history','infra.sysjobs / sysjobschedules / sysjobhistory'],
-          ['SSIS catalog','catalog.executions'],
-          ['Maintenance log (Ola Hallengren)','infra.CommandLog'],
-          ['Perfmon capture','infra.PerfCounters']])}
+        ${tableHTML(['Evidence','Where',''], [
+          ['SQL Agent jobs and history','infra.sysjobs / sysjobschedules / sysjobhistory', open('agent', 'Job history')],
+          ['SSIS catalog','catalog.executions', open('ssis', 'SSIS catalog')],
+          ['Maintenance log (Ola Hallengren)','infra.CommandLog', open('sql', 'Query it')],
+          ['Perfmon capture','infra.PerfCounters', open('perf', 'Perfmon')]])}
         <p class="note">Deliverable: the root cause, the evidence that <b>proves</b> it (not just correlates with it), and a recommended change.</p>
-        <div class="row" style="margin-top:16px"><button class="btn primary" id="startbtn" data-go="agent">Start investigation ${svg(IC.arrow, 15, 2.2)}</button></div>
+        <div class="row" style="margin-top:16px"><button class="btn primary" id="startbtn" data-go="agent">Start investigation ${svg(IC.arrow, 15, 2.2)}</button>
+          <button class="btn" data-act="notes">${svg(IC.pin, 15)} Open my notes</button></div>
       </div></div>
     <div class="card"><div class="ch"><b>Meridian Retail Holdings</b></div><div class="cb">
       <ul class="facts">
@@ -747,107 +986,180 @@ function scTicket(){
   </div>`;
 }
 
+const AGENT_SORT = {run_date:n => n.iso, run_day:n => (n.wd + 6) % 7, run_duration:n => n.end, ended:n => n.end, sla:n => n.late ? 1 : 0};
+function rangeProblem(){ const {from, to} = S.hist; return from && to && from > to ? 'The From date is after the To date.' : ''; }
 function agentRows(){
-  return NIGHTS.filter(n => (S.agent.day === 'All' || DAYS[n.wd] === S.agent.day) && (!S.agent.lateOnly || n.late)).reverse();
+  if (rangeProblem()) return [];
+  const {from, to, sort} = S.hist;
+  const rows = NIGHTS.filter(n => (S.agent.day === 'All' || DAYS[n.wd] === S.agent.day) && (!S.agent.lateOnly || n.late) &&
+    (!from || n.iso >= from) && (!to || n.iso <= to));
+  return sortBy(rows, AGENT_SORT[sort.key] || AGENT_SORT.run_date, sort.dir);
 }
+const AGENT_COLS = ['run_date','run_day','run_time','run_duration','ended','run_status','SLA'];
+const agentRow = n => [ymd(n.iso), DAYS[n.wd], '01:00:00', hdur(n.end - 3600), hms(n.end), '1 (Succeeded)', n.late ? 'LATE' : 'on time'];
 function scAgent(){
-  const rows = agentRows();
+  const rows = agentRows(), rp = rangeProblem();
   const sunLate = SUNDAYS.filter(n => n.late).length;
   const onSun = S.agent.day === 'Sunday';
+  const dayRows = NIGHTS.filter(n => S.agent.day === 'All' || DAYS[n.wd] === S.agent.day), dayLate = dayRows.filter(n => n.late);
+  const pinText = `Job history (${S.agent.day === 'All' ? 'all nights' : S.agent.day + 's'}): ${dayLate.length} of ${dayRows.length} runs finished after 07:00${dayLate.length ? `, first on ${dayLate[0].iso}, all on ${[...new Set(dayLate.map(n => DAYS[n.wd] + 's'))].join('/')}` : ''}.`;
   return head('SQL Server Agent · Job history',
-    `Every run of <code>${esc(JOB)}</code> from <code>infra.sysjobhistory</code>. The job starts at 01:00; the numbers must be there by 07:00.`) +
+    `Every run of <code>${esc(JOB)}</code> from <code>infra.sysjobhistory</code>. The job starts at 01:00; the numbers must be there by 07:00. Click a dot or a run date to open that run's steps.`) +
   `<div class="kpi">
     <div class="k"><div class="lb">Nights</div><div class="vl" id="kpi-nights">${N_NIGHTS}</div><div class="dl">${esc(NIGHTS[0].iso)} → ${esc(NIGHTS[N_NIGHTS-1].iso)}</div></div>
     <div class="k bad"><div class="lb">Late nights</div><div class="vl" id="kpi-late">${LATE.length}</div><div class="dl">finished after 07:00</div></div>
     <div class="k"><div class="lb">Late Sundays</div><div class="vl">${sunLate} / ${SUNDAYS.length}</div><div class="dl">${onSun ? 'every one since ' + esc(LATE[0].iso) : 'filter to Sunday to see the pattern'}</div></div>
     <div class="k"><div class="lb">Latest finish</div><div class="vl">${hm(Math.max(...NIGHTS.map(n => n.end)))}</div><div class="dl">SLA 07:00</div></div>
   </div>
-  <div class="card" style="margin-bottom:16px"><div class="ch"><b>Completion time per night</b><span class="chip grey">${onSun ? 'Sundays highlighted' : 'all nights'}</span></div>
-    <div class="cb">${chNights(NIGHTS, {match:n => (S.agent.day === 'All' || DAYS[n.wd] === S.agent.day) && (!S.agent.lateOnly || n.late), showChange:onSun})}</div></div>
+  <div class="card" style="margin-bottom:16px"><div class="ch"><b>Completion time per night</b><span class="chip grey">${onSun ? 'Sundays highlighted' : S.agent.day === 'All' ? 'all nights' : esc(S.agent.day) + 's highlighted'}</span>${pinBtn(pinText, 'pin-agent')}</div>
+    <div class="cb">${safe(() => chNights(NIGHTS, {match:n => (S.agent.day === 'All' || DAYS[n.wd] === S.agent.day) && (!S.agent.lateOnly || n.late), showChange:onSun}), 'completion chart')}</div></div>
   <div class="filterbar">
     <div class="field"><label for="f_day">Run day</label>
       <select class="input" id="f_day" data-bind="agentDay">${['All', ...DAYS.slice(1), 'Sunday'].map(d => `<option ${d === S.agent.day ? 'selected' : ''}>${d}</option>`).join('')}</select></div>
+    <div class="field date"><label for="f_from">From</label><input class="input" type="date" id="f_from" data-bind="histFrom" min="${NIGHTS[0].iso}" max="${NIGHTS[N_NIGHTS-1].iso}" value="${esc(S.hist.from)}"${rp ? ' aria-invalid="true" aria-describedby="rangeErr"' : ''}></div>
+    <div class="field date"><label for="f_to">To</label><input class="input" type="date" id="f_to" data-bind="histTo" min="${NIGHTS[0].iso}" max="${NIGHTS[N_NIGHTS-1].iso}" value="${esc(S.hist.to)}"${rp ? ' aria-invalid="true" aria-describedby="rangeErr"' : ''}></div>
+    ${S.hist.from || S.hist.to ? '<button class="btn sm" id="f_clear" data-act="histClear" style="margin-bottom:5px">Clear dates</button>' : ''}
     <label class="check"><input type="checkbox" id="f_late" data-bind="agentLate" ${S.agent.lateOnly ? 'checked' : ''}> Late runs only</label>
-    <span class="note" style="margin:0 0 12px auto" id="rowcount">${rows.length} row${rows.length === 1 ? '' : 's'}</span>
+    <span class="note" style="margin:0 0 12px auto" id="rowcount">${plural(rows.length, 'row')}</span>
+    <button class="btn sm" id="exportcsv" data-act="exportCsv" style="margin-bottom:5px">${svg(IC.download, 14)} Export CSV</button>
   </div>
-  <div class="card">${tableHTML(['run_date','run_day','run_time','run_duration','ended','run_status','SLA'],
-    rows.map(n => [ymd(n.iso), DAYS[n.wd], '01:00:00', hdur(n.end - 3600), hms(n.end), '1 (Succeeded)', n.late ? 'LATE' : 'on time']),
-    {tall:true, hl:i => rows[i].late, empty:'No nights match these filters. Try another day, or untick "Late runs only".'})}</div>
+  <p class="formerr" id="rangeErr" role="alert">${esc(rp)}</p>
+  <div class="card">${tableHTML(AGENT_COLS,
+    rows.map(n => { const r = agentRow(n); r[0] = {html:`<button class="linkbtn" data-act="jobRun" data-arg="${n.iso}" aria-label="Open run ${n.iso}">${r[0]}</button>`}; return r; }),
+    {tall:true, hl:i => rows[i].late, sortId:'agent', sort:S.hist.sort, sortKeys:['run_date','run_day',null,'run_duration','ended',null,'sla'],
+     empty:rp || 'No nights match these filters. Try another day, other dates, or untick "Late runs only".'})}</div>
   <p class="note">run_status 1 means the job <i>succeeded</i>. It was never failing, only finishing late, so no alert fired.</p>`;
 }
 
+const SSIS_SORT = {package:r => r.p.n.toLowerCase(), layer:r => r.p.layer, start:r => r.p.start, end:r => r.p.start + r.p.dur, dur:r => r.p.dur, avg:r => r.avg, ratio:r => r.ratio};
 function scSsis(){
-  const n = NIGHTS.find(x => x.iso === S.ssis.date) || LAST_LATE;
-  const rows = n.pk.map((p, k) => ({p, avg:avgBefore(n.i, k)}));
-  const ratio = rows.map(r => ({k:r.p.n.replace('.dtsx', ''), v:r.p.dur / r.avg}));
-  const slowest = Math.max(...ratio.map(r => r.v));
+  const n = nightOf(S.ssis.date) || LAST_LATE;
+  const base = n.pk.map((p, k) => { const avg = avgBefore(n.i, k); return {p, k, avg, ratio:p.dur / avg}; });
+  const rows = sortBy(base, SSIS_SORT[S.ssisX.sort.key] || SSIS_SORT.start, S.ssisX.sort.dir);
+  const slowest = Math.max(...base.map(r => r.ratio));
+  const list = (S.ssisX.sundaysOnly ? SUNDAYS : NIGHTS).slice().reverse();
+  const worst = base.reduce((a, b) => b.ratio > a.ratio ? b : a);
+  const pinText = `SSIS on ${n.iso} (${DAYS[n.wd]}): slowest package ${worst.p.n} at ${worst.ratio.toFixed(2)}× its 28-night average; extracts ${base.slice(0, 3).map(r => r.ratio.toFixed(2) + '×').join(', ')}.`;
   return head('SSISDB · All Executions',
-    'One row per package from <code>catalog.executions</code> for the night you pick, against each package\'s average over the 28 nights before it. Which layer got slow?') +
+    'One row per package from <code>catalog.executions</code> for the night you pick, against each package\'s average over the 28 nights before it. Which layer got slow? Click a package for its messages.') +
   `<div class="filterbar">
-    <div class="field"><label for="f_date">Sunday run</label>
-      <select class="input" id="f_date" data-bind="ssisDate">${SUNDAYS.slice().reverse().map(x => `<option value="${x.iso}" ${x.iso === n.iso ? 'selected' : ''}>${x.iso}${x.late ? ' · late' : ''}</option>`).join('')}</select></div>
-    <span class="chip ${n.late ? 'bad' : 'ok'}" style="margin-bottom:12px">${n.late ? 'Finished ' + hm(n.end) + ' · late' : 'Finished ' + hm(n.end) + ' · on time'}</span>
+    <div class="field"><label for="f_date">${S.ssisX.sundaysOnly ? 'Sunday run' : 'Run date'}</label>
+      <select class="input" id="f_date" data-bind="ssisDate">${list.map(x => `<option value="${x.iso}" ${x.iso === n.iso ? 'selected' : ''}>${x.iso}${S.ssisX.sundaysOnly ? '' : ' · ' + DAYS[x.wd].slice(0, 3)}${x.late ? ' · late' : ''}</option>`).join('')}</select></div>
+    <label class="check"><input type="checkbox" id="f_sun" data-bind="ssisSun" ${S.ssisX.sundaysOnly ? 'checked' : ''}> Sundays only</label>
+    <span class="chip ${n.late ? 'bad' : 'ok'}" style="margin-bottom:12px" id="ssisChip">${'Finished ' + hm(n.end) + (n.late ? ' · late' : ' · on time')}</span>
   </div>
   <div style="display:grid;gap:16px">
-    <div class="card"><div class="ch"><b>Duration against the 28-night average</b></div><div class="cb">${chRatio(ratio)}
+    <div class="card"><div class="ch"><b>Duration against the 28-night average</b>${pinBtn(pinText, 'pin-ssis')}</div><div class="cb">${safe(() => chRatio(base.map(r => ({k:r.p.n.replace('.dtsx', ''), v:r.ratio, idx:r.k}))), 'ratio chart')}
       <p class="note">${slowest >= 1.3 ? 'The three <b>fact loads</b> are the slow ones; extracts and dimensions are normal.' : 'Nothing unusual on this night: every package is close to its average.'}</p></div></div>
     <div class="card">${tableHTML(['package_name','layer','start_time','end_time','duration','28-night avg','vs avg'],
-      rows.map((r, k) => [r.p.n, r.p.layer, hms(r.p.start), hms(r.p.start + r.p.dur), hdur(r.p.dur), hdur(r.avg), ratio[k].v.toFixed(2) + '×']),
-      {hl:i => ratio[i].v >= 1.3})}</div>
+      rows.map(r => [{html:`<button class="linkbtn" data-act="pkg" data-arg="${r.k}">${esc(r.p.n)}</button>`}, r.p.layer, hms(r.p.start), hms(r.p.start + r.p.dur), hdur(r.p.dur), hdur(r.avg), r.ratio.toFixed(2) + '×']),
+      {hl:i => rows[i].ratio >= 1.3, sortId:'ssis', sort:S.ssisX.sort, sortKeys:['package','layer','start','end','dur','avg','ratio']})}</div>
   </div>
   <p class="note">After the packages the job processes the <code>MRH_Sales</code> cube (started ${hm(n.ssas.start)}, ${hdur(n.ssas.dur)}) and refreshes the report cache. They start late only because the load finished late.</p>`;
 }
 
+function resultPane(t){
+  const r = t.result;
+  if (!r) return '<div class="empty">Press <kbd>F5</kbd> or <b>Execute</b> to run the query. Select part of the text first to run only that part.</div>';
+  if (t.tab === 'messages' || !r.sets.length)
+    return `<pre class="msgs" id="messages">${r.msgs.map(m => m.err ? `<span class="err">${esc(m.text)}</span>` : esc(m.text)).join('\n\n')}</pre>`;
+  if (S.sql.textMode) return `<pre class="msgs textres" id="textresults">${esc(r.sets.map(asText).join('\n\n'))}</pre>`;
+  return r.sets.map(set => `<div class="set">${set.rows.length > ROW_CAP ? `<div class="capnote">Showing the first ${fmtN(ROW_CAP, 0)} of ${fmtN(set.rows.length, 0)} rows. Narrow it with TOP or WHERE.</div>` : ''}${tableHTML(set.cols, set.rows.slice(0, ROW_CAP), {empty:'(0 rows)'})}</div>`).join('');
+}
+function asText(set){
+  const cap = s => { s = s === null ? 'NULL' : String(s); return s.length > 60 ? s.slice(0, 57) + '...' : s; };
+  const rows = set.rows.slice(0, ROW_CAP).map(r => r.map(cap)), head = set.cols.map(cap);
+  const w = head.map((c, i) => Math.max(c.length, ...rows.map(r => r[i].length)));
+  const line = r => r.map((v, i) => v.padEnd(w[i])).join(' ').trimEnd();
+  return [line(head), w.map(n => '-'.repeat(n)).join(' '), ...rows.map(line)].join('\n') + `\n\n(${plural(set.rows.length, 'row')} affected)`;
+}
+function sqlPinText(t){
+  const r = t.result; if (!r || !r.sets.length) return '';
+  const set = r.sets[r.sets.length - 1], first = set.rows[0];
+  const q = (r.ran || '').replace(/--[^\n]*/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 220);
+  return `Query: ${q} → ${plural(set.rows.length, 'row')}${first ? '; first: ' + set.cols.slice(0, 4).map((c, i) => `${c}=${first[i] === null ? 'NULL' : first[i]}`).join(', ') : ''}`.slice(0, 600);
+}
 function scSql(){
-  const r = S.sql.result;
-  const oe = Object.values(TABLES).map(t => `<li class="l4">${svg(IC.table, 13)}<button class="tbl-item" data-act="topRows" data-arg="${esc(t.label)}" title="Select Top 1000 Rows">${esc(t.label)}</button></li>`).join('');
-  let pane = '<div class="empty">Press <kbd>F5</kbd> or <b>Execute</b> to run the query.</div>';
-  if (r) pane = S.sql.tab === 'results' && r.cols
-    ? tableHTML(r.cols, r.rows, {empty:'(0 rows)'})
-    : `<pre class="msgs" id="messages">${r.msgs.map(m => m.err ? `<span class="err">${esc(m.text)}</span>` : esc(m.text)).join('\n\n')}</pre>`;
-  const tabBtn = (k, l) => `<button role="tab" id="tab-${k}" aria-selected="${S.sql.tab === k}" data-act="sqlTab" data-arg="${k}">${l}</button>`;
-  return head('SSMS · SQLQuery1.sql',
-    'A query window on <code>MRH-SQLDW01</code>, database <code>Infra_Sim</code>. Pick a toolkit query or write your own against the evidence tables in Object Explorer.') +
+  const t = curTab(), r = t.result;
+  const oe = Object.entries(TABLES).map(([key, tb]) => {
+    const open = !!S.sql.oe[key];
+    return `<li class="l4"><button class="tw" data-act="oeToggle" data-arg="${key}" aria-expanded="${open}" aria-label="${open ? 'Hide' : 'Show'} columns of ${esc(tb.label)}">${open ? '▼' : '▶'}</button>${svg(IC.table, 13)}<button class="tbl-item" data-act="topRows" data-arg="${esc(tb.label)}" title="Select Top 1000 Rows">${esc(tb.label)}</button></li>` +
+      (open ? tb.cols.map(c => `<li class="l5">${esc(c)}</li>`).join('') : '');
+  }).join('');
+  const tabBtn = (k, l) => `<button role="tab" id="tab-${k}" aria-selected="${t.tab === k}" data-act="sqlTab" data-arg="${k}">${l}</button>`;
+  const pt = sqlPinText(t);
+  const set = r && r.sets.length ? r.sets[r.sets.length - 1] : null;
+  return head('SSMS · ' + t.title,
+    'A query window on <code>MRH-SQLDW01</code>, database <code>Infra_Sim</code>. Pick a toolkit query or write your own against the evidence tables in Object Explorer: <code>WHERE</code>, <code>LIKE</code>, <code>IN</code>, <code>BETWEEN</code>, <code>GROUP BY</code>, <code>ORDER BY</code>, <code>TOP</code> and one <code>JOIN</code> all work.') +
   `<div class="ssms">
     <aside class="oe" aria-label="Object Explorer"><div class="oh">Object Explorer</div><ul>
       <li>${svg(IC.server, 13)} MRH-SQLDW01 (SQL Server 15.0)</li>
       <li class="l2">${svg(IC.folder, 13)} Databases</li>
       <li class="l3">${svg(IC.db, 13)} Infra_Sim</li>${oe}</ul></aside>
     <section class="qwin">
+      <div class="qtabs" role="tablist" aria-label="Query windows">${S.sql.tabs.map((q, i) => `<div class="qtab ${i === S.sql.active ? 'on' : ''}">
+          <button role="tab" id="qtab-${q.id}" aria-selected="${i === S.sql.active}" data-act="switchTab" data-arg="${q.id}">${esc(q.title)}</button>
+          <button class="x" data-act="closeTab" data-arg="${q.id}" aria-label="Close ${esc(q.title)}">×</button></div>`).join('')}
+        <button class="newq" id="newtab" data-act="newTab">${svg(IC.plus, 12, 2.2)} New Query</button></div>
       <div class="qbar">
         <button class="btn primary sm" id="runbtn" data-act="runSql">${svg(IC.play, 13, 2)} Execute</button>
         <label class="vh" for="preset">Toolkit query</label>
-        <select class="input" id="preset" data-bind="sqlPreset">${Object.entries(TOOLKIT).map(([k, t]) => `<option value="${k}" ${S.sql.preset === k ? 'selected' : ''}>${esc(t.label)}</option>`).join('')}<option value="custom" ${S.sql.preset === 'custom' ? 'selected' : ''}>Your own query</option></select>
-        <span class="note" style="margin:0 0 0 auto">Read-only simulation of the evidence tables</span>
+        <select class="input" id="preset" data-bind="sqlPreset">${Object.entries(TOOLKIT).map(([k, q]) => `<option value="${k}" ${t.preset === k ? 'selected' : ''}>${esc(q.label)}</option>`).join('')}<option value="custom" ${t.preset === 'custom' ? 'selected' : ''}>Your own query</option></select>
+        <button class="btn sm" id="textmode" data-act="textMode" aria-pressed="${S.sql.textMode}" title="Results to Text">${svg(IC.text, 14)} Text</button>
+        <button class="btn sm" id="histbtn" data-act="history" ${S.sql.history.length ? '' : 'disabled'}>${svg(IC.hist, 14)} History${S.sql.history.length ? ' (' + S.sql.history.length + ')' : ''}</button>
+        <button class="btn sm" id="savesql" data-act="saveSql">${svg(IC.download, 14)} Save .sql</button>
       </div>
       <label class="vh" for="editor">Query editor</label>
-      <textarea class="editor" id="editor" spellcheck="false" autocapitalize="off" autocomplete="off" data-input="sqlText">${esc(S.sql.text)}</textarea>
-      <div class="rtabs" role="tablist">${tabBtn('results', 'Results')}${tabBtn('messages', 'Messages')}</div>
-      <div class="rpane" id="rpane" role="tabpanel" aria-labelledby="tab-${S.sql.tab}">${pane}</div>
-      ${r ? `<div class="status ${r.error ? 'err' : ''}" id="sqlstatus"><span>${r.error ? 'Query completed with errors.' : 'Query executed successfully.'}</span>
-        <span class="sp">MRH-SQLDW01 (15.0 RTM)</span><span>MRH\\junior.dba (61)</span><span>Infra_Sim</span><span>00:00:0${r.cols ? 1 : 0}</span><span>${r.cols ? r.rows.length : 0} rows</span></div>` : ''}
+      <textarea class="editor" id="editor" spellcheck="false" autocapitalize="off" autocomplete="off" maxlength="${MAX_SQL}" data-input="sqlText">${esc(t.text)}</textarea>
+      <div class="rtabs"><div role="tablist" aria-label="Results" style="display:flex;gap:2px">${tabBtn('results', 'Results')}${tabBtn('messages', 'Messages')}</div>${pt ? pinBtn(pt, 'pin-sql') : ''}</div>
+      <div class="rpane" id="rpane" role="tabpanel" aria-labelledby="tab-${t.tab}">${resultPane(t)}</div>
+      ${r ? `<div class="status ${r.error ? 'err' : ''}" id="sqlstatus"><span>${r.error ? 'Query completed with errors.' : 'Query executed successfully.'}${r.selection ? ' (selection)' : ''}</span>
+        <span class="sp">MRH-SQLDW01 (15.0 RTM)</span><span>MRH\\junior.dba (61)</span><span>Infra_Sim</span><span>00:00:${pad(Math.min(59, Math.floor(r.ms / 1000)))}</span><span>${plural(set ? set.rows.length : 0, 'row')}</span></div>` : ''}
     </section>
   </div>`;
 }
 
+const COUNTERS = {
+  lock:{label:'Lock Waits/sec', get:p => p.lock},
+  blocked:{label:'Processes blocked', get:p => p.blocked},
+  ple:{label:'Page life expectancy (s)', get:p => p.ple},
+  disk:{label:'Avg. disk ms/read', get:p => p.disk}
+};
+const nightLabel = n => `${DAYS[n.wd].slice(0, 3)} ${n.iso}`;
+function perfCard(slot){
+  const key = S.perf[slot], c = COUNTERS[key];
+  const A = nightOf(S.perf.a), B = nightOf(S.perf.b);
+  const pa = perfOf(A), pb = perfOf(B);
+  const peak = arr => arr.reduce((m, p) => c.get(p) > c.get(m) ? p : m);
+  const kA = peak(pa), kB = peak(pb);
+  const same = A.iso === B.iso;
+  const series = [{name:nightLabel(A), color:'var(--danger)', pts:pa.map(p => ({k:pad(p.h) + ':00', v:c.get(p)}))}];
+  if (!same) series.push({name:nightLabel(B), color:'var(--accent)', pts:pb.map(p => ({k:pad(p.h) + ':00', v:c.get(p)}))});
+  const text = `Perfmon ${c.label}: ${nightLabel(A)} peaks at ${fmtN(c.get(kA))} (${pad(kA.h)}:00)${same ? '' : `; ${nightLabel(B)} peaks at ${fmtN(c.get(kB))} (${pad(kB.h)}:00)`}.`;
+  return `<div class="card"><div class="ch"><label class="vh" for="p_${slot}">Counter</label>
+      <select class="input" id="p_${slot}" data-bind="perfCounter" data-slot="${slot}">${Object.entries(COUNTERS).map(([k, v]) => `<option value="${k}" ${k === key ? 'selected' : ''}>${esc(v.label)}</option>`).join('')}</select>
+      <span class="chip grey">peak ${esc(fmtN(c.get(kA)))} at ${pad(kA.h)}:00</span>${pinBtn(text, 'pin-perf-' + slot)}</div>
+    <div class="cb">${safe(() => chLine(series, {label:c.label + ' by hour'}), 'counter chart')}</div></div>`;
+}
 function scPerf(){
-  const late = LAST_LATE, wed = NIGHTS.filter(n => n.wd === 3).slice(-1)[0];
-  const k = p => pad(p.h) + ':00';
+  const A = nightOf(S.perf.a) || LAST_LATE, B = nightOf(S.perf.b) || LAST_WED;
   const avg = (a, f) => a.reduce((s, x) => s + f(x), 0) / a.length;
+  const ext = n => n.pk.slice(0, 3).reduce((a, p) => a + p.dur, 0);
+  const opts = cur => NIGHTS.slice().reverse().map(n => `<option value="${n.iso}" ${n.iso === cur ? 'selected' : ''}>${nightLabel(n)}${n.late ? ' · late' : ''}</option>`).join('');
   return head('Perfmon · MRH-SQLDW01',
-    `Counters from <code>infra.PerfCounters</code>, one sample an hour: the last late Sunday (${esc(late.iso)}) against an ordinary Wednesday (${esc(wed.iso)}). This is the <b>mechanism</b>, not just the timing.`) +
-  `<div class="halves">
-    <div class="card"><div class="ch"><b>Lock Waits/sec</b><span class="chip bad">spikes 01:00 – 05:00</span></div><div class="cb">
-      ${chLine([{name:'Sun ' + late.iso, color:'var(--danger)', pts:PERF_LATE.map(p => ({k:k(p), v:p.lock}))},
-                {name:'Wed ' + wed.iso, color:'var(--accent)', pts:PERF_WED.map(p => ({k:k(p), v:p.lock}))}], {label:'Lock waits per second by hour'})}</div></div>
-    <div class="card"><div class="ch"><b>Page life expectancy (s)</b><span class="chip warn">buffer churn</span></div><div class="cb">
-      ${chLine([{name:'Sun ' + late.iso, color:'var(--danger)', pts:PERF_LATE.map(p => ({k:k(p), v:p.ple}))},
-                {name:'Wed ' + wed.iso, color:'var(--accent)', pts:PERF_WED.map(p => ({k:k(p), v:p.ple}))}], {label:'Page life expectancy by hour'})}</div></div>
+    `Counters from <code>infra.PerfCounters</code>, one sample an hour from 00:00 to 09:00. Compare any two nights on any counter. By default: the last late Sunday against an ordinary Wednesday. This is the <b>mechanism</b>, not just the timing.`) +
+  `<div class="filterbar">
+    <div class="field"><label for="p_a">Night A (red)</label><select class="input" id="p_a" data-bind="perfNight" data-slot="a">${opts(A.iso)}</select></div>
+    <div class="field"><label for="p_b">Night B (blue)</label><select class="input" id="p_b" data-bind="perfNight" data-slot="b">${opts(B.iso)}</select></div>
+    <button class="btn sm" data-act="perfSwap" id="p_swap" style="margin-bottom:5px">Swap</button>
+    <button class="btn sm" data-act="perfReset" id="p_reset" style="margin-bottom:5px">Reset</button>
   </div>
+  ${A.iso === B.iso ? '<p class="warnline" id="sameNight">You are comparing a night with itself, so each chart shows one line.</p>' : ''}
+  <div class="halves">${perfCard('c1')}${perfCard('c2')}</div>
   <h2 class="sec" style="margin-top:20px">Counter-checks: what this is <i>not</i></h2>
   <div class="kpi">
-    <div class="k"><div class="lb">Avg disk ms/read · Sun</div><div class="vl">${avg(PERF_LATE, p => p.disk).toFixed(1)}</div><div class="dl">Wed ${avg(PERF_WED, p => p.disk).toFixed(1)} ms: storage is fine</div></div>
-    <div class="k"><div class="lb">Extract duration · Sun</div><div class="vl">${hdur(late.pk.slice(0,3).reduce((a, p) => a + p.dur, 0)).slice(0,5)}</div><div class="dl">same as before ${esc(CHANGE)}: volume is fine</div></div>
+    <div class="k"><div class="lb">Avg disk ms/read · A</div><div class="vl">${avg(perfOf(A), p => p.disk).toFixed(1)}</div><div class="dl">B ${avg(perfOf(B), p => p.disk).toFixed(1)} ms: storage is fine</div></div>
+    <div class="k"><div class="lb">Extract duration · A</div><div class="vl">${hdur(ext(A)).slice(0,5)}</div><div class="dl">B ${hdur(ext(B)).slice(0,5)}: volume is fine</div></div>
     <div class="k"><div class="lb">Full backup ends</div><div class="vl">00:20</div><div class="dl">before 01:00: not the backup</div></div>
     <div class="k"><div class="lb">CHECKDB ends</div><div class="vl">Sat 23:40</div><div class="dl">before 01:00: not CHECKDB</div></div>
   </div>`;
@@ -888,17 +1200,34 @@ function scDiagnose(){
       <div class="causes" id="causes">${causeList()}</div>
       <div class="cb" style="border-top:1px solid var(--line)">
         <div class="row"><button class="btn primary" id="submitDiag" data-act="submitDiag" ${n ? '' : 'disabled'}>Submit diagnosis</button>
-        ${n ? '' : '<span class="note" style="margin:0">Select at least one cause.</span>'}
+        ${n ? '<button class="btn sm" data-act="clearCauses" id="clearCauses">Clear</button>' : '<span class="note" style="margin:0">Select at least one cause.</span>'}
         ${S.diag.attempts ? `<span class="note" style="margin:0 0 0 auto">Attempts: ${S.diag.attempts}</span>` : ''}</div>
         ${verdictHTML()}
         ${S.diag.verdict && S.diag.verdict.kind === 'ok' ? `<div class="row" style="margin-top:12px"><button class="btn primary" data-go="fix" id="toFix">Continue to the fix ${svg(IC.arrow, 15, 2.2)}</button></div>` : ''}
       </div></div>
     <div class="card"><div class="ch"><b>Evidence you have</b><span class="chip ${ev.every(e => e[0]) ? 'ok' : 'grey'}">${ev.filter(e => e[0]).length} / ${ev.length}</span></div>
       <div class="cb"><ul class="evid">${ev.map(e => `<li class="${e[0] ? 'got' : ''}"><span class="dot">${e[0] ? svg(IC.check, 11, 3) : ''}</span>${esc(e[1])}</li>`).join('')}</ul>
-      <p class="note">A diagnosis is proven when you have the pattern, the overlap and the mechanism, and have ruled out the alternatives.</p></div></div>
+      <p class="note">A diagnosis is proven when you have the pattern, the overlap and the mechanism, and have ruled out the alternatives.</p>
+      <button class="btn sm" data-act="notes" style="margin-top:10px">${svg(IC.pin, 14)} Review my notes (${NOTES.length})</button></div></div>
   </div>`;
 }
 
+function whatIfHTML(){
+  const w = S.whatif ? whatIf(S.whatif) : null;
+  const radios = Object.entries(WHATIF).map(([k, v]) => `<label class="${S.whatif === k ? 'on' : ''}"><input type="radio" name="whatif" id="wi-${k}" value="${k}" data-bind="whatIf" ${S.whatif === k ? 'checked' : ''}><span>${esc(v.label)}</span></label>`).join('');
+  let out = '<p class="note" style="margin-top:14px">Pick a fix to see how the next four Sundays would go.</p>';
+  if (w) {
+    const cls = w.verdict === 'pass' ? 'ok' : w.verdict === 'partial' ? 'warn' : 'bad';
+    const head = w.verdict === 'pass' ? 'Works: every Sunday finishes before 07:00.'
+      : w.verdict === 'partial' ? `Helps, but not enough: ${w.late} of 4 Sundays still late.` : `No help: ${w.late} of 4 Sundays still late.`;
+    out = `<div class="verdict ${cls}" role="status" id="whatifVerdict"><b>${esc(head)}</b> ${esc(w.why)}</div>
+      <div style="margin-top:14px">${safe(() => chSundays(w.runs.map(r => Object.assign({}, r, {after:true})), () => 'simulated'), 'what-if chart')}</div>
+      <div class="row" style="margin-top:8px">${pinBtn(`What-if "${w.label}": ${w.late} of 4 Sundays late (${w.runs.map(r => hm(r.end)).join(', ')}). ${w.verdict === 'pass' ? 'Works.' : w.verdict === 'partial' ? 'Partial.' : 'Does not help.'}`, 'pin-whatif')}
+      ${w.verdict === 'pass' && !S.fix ? '<button class="btn primary sm" data-act="editSchedule" id="applyWhatif">Apply this fix…</button>' : ''}</div>`;
+  }
+  return `<div class="card" style="margin-top:16px" id="whatif"><div class="ch"><b>Try other fixes</b><span class="chip grey">simulated on the next 4 Sundays</span></div>
+    <div class="cb"><fieldset class="radiolist"><legend>What would you change?</legend>${radios}</fieldset>${out}</div></div>`;
+}
 function scFix(){
   if (!S.diag.verdict || S.diag.verdict.kind !== 'ok') {
     return head('Fix & debrief', 'The fix depends on the cause.') +
@@ -910,21 +1239,23 @@ function scFix(){
   const after = AFTER_FIX.map(n => Object.assign({}, n, {after:true}));
   const mean = a => a.reduce((s, x) => s + x.end, 0) / a.length;
   return head('Fix & debrief',
-    'Move the maintenance job out of the protected ETL window, then prove the fix with the same evidence.') +
+    'Move the maintenance job out of the protected ETL window, then prove the fix with the same evidence. Try the other fixes too: only one of them passes the lab.') +
   `<div class="two">
     <div class="card"><div class="ch">${svg(IC.cal, 16)}<b class="mono">${esc(MAINT)}</b><span class="chip ${S.fix ? 'ok' : 'bad'}" id="schedChip">${S.fix ? 'outside the ETL window' : 'inside the ETL window'}</span></div>
       <div class="cb"><div class="summary" id="schedSummary">${esc(sched)}</div>
         <div class="row"><button class="btn ${S.fix ? '' : 'primary'}" id="editSched" data-act="editSchedule">${S.fix ? 'Edit schedule again' : 'Edit schedule…'}</button>
-        ${S.fix && S.fix.online ? '<span class="chip">ONLINE = ON</span>' : ''}</div></div></div>
+        ${S.fix && S.fix.online ? '<span class="chip">ONLINE = ON</span>' : ''}
+        ${S.fix ? '<button class="btn sm ghost" data-act="undoFix" id="undoFix">Undo</button>' : ''}</div></div></div>
     <div class="card"><div class="ch"><b>ETL window</b></div><div class="cb"><ul class="facts">
       <li><span>Refresh</span><b>01:00 – 07:00</b></li><li><span>Rebuild takes</span><b>≈ 4h 15m</b></li><li><span>Rule</span><b>no maintenance inside</b></li></ul></div></div>
   </div>
+  ${whatIfHTML()}
   ${S.fix ? `<div class="kpi" style="margin-top:16px">
       <div class="k bad"><div class="lb">Sunday finish · 4 before</div><div class="vl">${hm(mean(before))}</div><div class="dl">average</div></div>
       <div class="k ok"><div class="lb">Sunday finish · 4 after</div><div class="vl" id="afterAvg">${hm(mean(after))}</div><div class="dl">average, simulated</div></div>
       <div class="k"><div class="lb">Late Sundays after</div><div class="vl" id="afterLate">${after.filter(n => n.late).length}</div><div class="dl">of 4</div></div>
       <div class="k"><div class="lb">Lock waits/sec · Sun</div><div class="vl">≈ 2</div><div class="dl">back to baseline</div></div></div>
-    <div class="card" style="margin-bottom:16px"><div class="ch"><b>Sunday completion, before and after</b></div><div class="cb">${chSundays(before.concat(after))}</div></div>
+    <div class="card" style="margin-bottom:16px"><div class="ch"><b>Sunday completion, before and after</b></div><div class="cb">${safe(() => chSundays(before.concat(after)), 'before/after chart')}</div></div>
     <div class="card" id="debrief"><div class="ch"><b>Debrief</b><span class="chip ok">lab 07 · passed</span></div><div class="cb">
       <p style="margin-top:0"><b>Root cause.</b> <code>${esc(MAINT)}</code> was moved from Sunday 09:00 to Sunday 00:30 on 2026-07-17. Its offline rebuilds hold a schema-modification lock on the newest fact partitions, and the Sunday 01:00 loads wait behind them.</p>
       <ol class="chain">
@@ -935,62 +1266,411 @@ function scFix(){
         <li><b>Counter-check</b>: disk latency and data volume are normal; the backup and CHECKDB finish before 01:00.</li>
       </ol>
       <p><b>Better still:</b> rebuild only what needs it (<code>@FragmentationLevel2 = 30</code>, <code>ONLINE = ON</code>, <code>@TimeLimit</code>), and add an Agent alert that fires if maintenance is still running at 00:55.</p>
-      <div class="row"><button class="btn primary" id="startover" data-act="restart">Start over</button><span class="note" style="margin:0">Run it for real: <code>bisim lab start 07</code></span></div>
+      <div class="row"><button class="btn primary" id="startover" data-act="restart">Start over</button><button class="btn" data-act="notesExport" ${NOTES.length ? '' : 'disabled'}>${svg(IC.download, 14)} Export my notes</button><span class="note" style="margin:0">Run it for real: <code>bisim lab start 07</code></span></div>
     </div></div>` : ''}`;
 }
 
-/* ============ the SSMS window's small T-SQL front end ============ */
-const DENIED = ['update','delete','insert','drop','alter','truncate','create','merge','exec','execute','grant','revoke'];
-function lineOf(text, token){
-  const i = text.toLowerCase().indexOf(String(token).toLowerCase());
-  return i < 0 ? 1 : text.slice(0, i).split('\n').length;
+/* ============ the SSMS window's T-SQL engine: a small, honest subset ============ */
+class SqlError extends Error {
+  constructor(num, lvl, st, line, text){ super(text); this.num = num; this.lvl = lvl; this.st = st; this.line = line; }
 }
+const unsupported = (line, what) => new SqlError(0, 0, 0, line,
+  `${what}: not supported in this simulation. It runs one SELECT per batch with TOP, DISTINCT, one inner JOIN, WHERE, GROUP BY (COUNT, MIN, MAX, AVG, SUM) and ORDER BY on the Infra_Sim evidence tables.`);
+const KW = new Set('select distinct top percent from where group by order asc desc and or not like in is null between as join inner on left right full outer cross having union all with into case when then else end exists offset fetch over'.split(' '));
+const NOW = '2026-09-28 09:14:03.117';
+const DENIED = ['update','delete','insert','drop','alter','truncate','create','merge','exec','execute','grant','revoke','deny'];
+const STMTS = ['use','declare','set','print','begin','if','while','raiserror','throw','waitfor','dbcc','backup','restore','kill','commit','rollback','save'];
+const MAX_SQL = 20000;
 const msg = (num, lvl, st, line, text) => ({err:true, text:`Msg ${num}, Level ${lvl}, State ${st}, Line ${line}\n${text}`});
 const done = () => ({text:'Completion time: 2026-09-28T09:14:03.117+03:00'});
-function runSql(src){
-  const text = String(src || '');
-  const code = text.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/--[^\n]*/g, ' ').replace(/^\s*GO\s*$/gim, ' ').trim();
-  if (!code) return {cols:null, rows:[], msgs:[{text:'Commands completed successfully.'}, done()]};
-  const first = (code.match(/^[\w@#]+/) || [code.split(/\s+/)[0]])[0];
-  const verb = first.toLowerCase();
-  if (DENIED.includes(verb)) {
-    const obj = (code.match(/^\w+\s+(?:(?:table|view|procedure|proc|into|from)\s+)?([\[\]\w.]+)/i) || [])[1] || '';
-    const parts = obj.replace(/[\[\]]/g, '').split('.');
+
+function tokenize(code){
+  const out = [], n = code.length; let i = 0, line = 1;
+  while (i < n) {
+    const c = code[i], d = code[i + 1];
+    if (c === '\n') { line++; i++; continue; }
+    if (c === ' ' || c === '\t' || c === '\r') { i++; continue; }
+    if (c === '-' && d === '-') { while (i < n && code[i] !== '\n') i++; continue; }
+    if (c === '/' && d === '*') { const j = code.indexOf('*/', i + 2), end = j < 0 ? n : j + 2; line += (code.slice(i, end).match(/\n/g) || []).length; i = end; continue; }
+    if (c === "'") {
+      let j = i + 1, s = ''; const l0 = line;
+      for (;;) {
+        if (j >= n) throw new SqlError(105, 15, 1, l0, `Unclosed quotation mark after the character string '${s}'.`);
+        if (code[j] === "'") { if (code[j + 1] === "'") { s += "'"; j += 2; continue; } break; }
+        if (code[j] === '\n') line++;
+        s += code[j++];
+      }
+      out.push({t:'str', v:s, raw:`'${s}'`, line:l0}); i = j + 1; continue;
+    }
+    if (c === '[') {
+      const j = code.indexOf(']', i);
+      if (j < 0) throw new SqlError(105, 15, 1, line, `Unclosed quotation mark after the character string '${code.slice(i + 1)}'.`);
+      const v = code.slice(i + 1, j); out.push({t:'id', v, low:v.toLowerCase(), kw:false, raw:v, line}); i = j + 1; continue;
+    }
+    if (/[0-9]/.test(c) || (c === '.' && /[0-9]/.test(d || ''))) { const m = /^\d*\.?\d+(?:[eE][+-]?\d+)?/.exec(code.slice(i)); out.push({t:'num', v:Number(m[0]), raw:m[0], line}); i += m[0].length; continue; }
+    if (/[A-Za-z_@#]/.test(c)) { const m = /^[A-Za-z_@#][\w@#$]*/.exec(code.slice(i)); const low = m[0].toLowerCase(); out.push({t:'id', v:m[0], low, kw:KW.has(low), raw:m[0], line}); i += m[0].length; continue; }
+    const two = code.slice(i, i + 2);
+    if (['<=', '>=', '<>', '!='].includes(two)) { out.push({t:'op', v:two, raw:two, line}); i += 2; continue; }
+    if ('=<>*(),.;+-/%'.includes(c)) { out.push({t:'op', v:c, raw:c, line}); i++; continue; }
+    throw new SqlError(102, 15, 1, line, `Incorrect syntax near '${c}'.`);
+  }
+  return out;
+}
+
+function parseSelect(toks){
+  let p = 0;
+  const T = (o=0) => toks[p + o];
+  const kw = (w, o=0) => { const t = T(o); return !!t && t.t === 'id' && t.kw && t.low === w; };
+  const op = (v, o=0) => { const t = T(o); return !!t && t.t === 'op' && t.v === v; };
+  const fail = t => { t = t || toks[toks.length - 1]; return new SqlError(102, 15, 1, t.line, `Incorrect syntax near '${t.raw}'.`); };
+  const needKw = w => { if (!kw(w)) throw fail(T()); return toks[p++]; };
+  const needOp = v => { if (!op(v)) throw fail(T()); return toks[p++]; };
+  const ident = () => { const t = T(); if (!t || t.t !== 'id' || t.kw) throw fail(t); p++; return t; };
+  const AGG = ['count', 'min', 'max', 'avg', 'sum'];
+  function primary(){
+    const t = T();
+    if (!t) throw fail();
+    if (t.t === 'str') { p++; return {k:'lit', v:t.v, t}; }
+    if (t.t === 'num') { p++; return {k:'lit', v:t.v, t}; }
+    if (op('-') && T(1) && T(1).t === 'num') { p += 2; return {k:'lit', v:-toks[p - 1].v, t}; }
+    if (op('(')) { p++; if (kw('select')) throw unsupported(T().line, 'Subqueries'); const e = expr(); needOp(')'); return e; }
+    if (kw('null')) { p++; return {k:'lit', v:null, t}; }
+    if (t.t === 'id' && t.kw) { if (t.low === 'case' || t.low === 'exists') throw unsupported(t.line, t.v.toUpperCase()); throw fail(t); }
+    if (t.t === 'id') {
+      if (op('(', 1)) {
+        p += 2;
+        if (AGG.includes(t.low)) {
+          if (kw('distinct')) throw unsupported(T().line, `${t.v.toUpperCase()}(DISTINCT …)`);
+          let arg = null;
+          if (op('*')) { if (t.low !== 'count') throw fail(T()); p++; } else arg = expr();
+          needOp(')');
+          if (kw('over')) throw unsupported(T().line, 'Window functions (OVER)');
+          return {k:'agg', fn:t.low, arg, t};
+        }
+        if (t.low === 'getdate' || t.low === 'sysdatetime') { needOp(')'); return {k:'lit', v:NOW, t}; }
+        throw new SqlError(195, 15, 10, t.line, `'${t.v}' is not a recognized built-in function name.`);
+      }
+      p++;
+      const parts = [t];
+      while (op('.') && T(1) && T(1).t === 'id') { p++; parts.push(toks[p++]); }
+      if (parts.length > 2) throw unsupported(t.line, 'Column names with more than two parts');
+      return parts.length === 2 ? {k:'col', qual:parts[0].v, name:parts[1].v, t:parts[1], raw:parts[0].v + '.' + parts[1].v}
+                                : {k:'col', qual:null, name:t.v, t, raw:t.v};
+    }
+    throw fail(t);
+  }
+  function term(){ let e = primary(); while (op('*') || op('/') || op('%')) { const o = toks[p++]; e = {k:'bin', o:o.v, a:e, b:primary(), t:o}; } return e; }
+  function expr(){ let e = term(); while (op('+') || op('-')) { const o = toks[p++]; e = {k:'bin', o:o.v, a:e, b:term(), t:o}; } return e; }
+  function cond(){ let e = andc(); while (kw('or')) { p++; e = {k:'or', a:e, b:andc()}; } return e; }
+  function andc(){ let e = notc(); while (kw('and')) { p++; e = {k:'and', a:e, b:notc()}; } return e; }
+  function notc(){ if (kw('not')) { p++; return {k:'not', a:notc()}; } return pred(); }
+  function pred(){
+    if (op('(')) {                            // a bracketed condition, unless it is an operand like (a + b) > 3
+      const save = p; p++;
+      try { const c = cond(); needOp(')'); return c; } catch (e) { p = save; }
+    }
+    const a = expr(), t = T();
+    if (kw('is')) { p++; const neg = kw('not') ? (p++, true) : false; needKw('null'); return {k:'isnull', a, neg}; }
+    const neg = kw('not') ? (p++, true) : false;
+    if (kw('like')) { p++; return {k:'like', a, b:expr(), neg, t}; }
+    if (kw('in')) { p++; needOp('('); if (kw('select')) throw unsupported(T().line, 'Subqueries'); const list = [expr()]; while (op(',')) { p++; list.push(expr()); } needOp(')'); return {k:'in', a, list, neg, t}; }
+    if (kw('between')) { p++; const lo = expr(); needKw('and'); return {k:'between', a, lo, hi:expr(), neg, t}; }
+    if (neg) throw fail(T());
+    if (t && t.t === 'op' && ['=', '<>', '!=', '<', '>', '<=', '>='].includes(t.v)) { p++; return {k:'cmp', o:t.v, a, b:expr(), t}; }
+    const near = t || toks[toks.length - 1];
+    throw new SqlError(4145, 15, 1, near.line, `An expression of non-boolean type specified in a context where a condition is expected, near '${near.raw}'.`);
+  }
+  const q = {distinct:false, top:null, items:[], from:[], on:null, where:null, group:[], order:[]};
+  if (kw('with')) throw unsupported(T().line, 'Common table expressions (WITH)');
+  needKw('select');
+  if (kw('all')) p++;
+  if (kw('distinct')) { p++; q.distinct = true; }
+  if (kw('top')) {
+    p++;
+    const bracket = op('(');
+    if (bracket) p++;
+    const t = T(); if (!t || t.t !== 'num') throw fail(t); p++;
+    if (bracket) needOp(')');
+    if (kw('percent')) throw unsupported(T().line, 'TOP … PERCENT');
+    if (kw('with')) throw unsupported(T().line, 'TOP … WITH TIES');
+    q.top = Math.max(0, Math.floor(t.v));
+  }
+  do {
+    if (q.items.length) p++;                  // the comma
+    if (op('*')) { q.items.push({star:true, t:toks[p++]}); continue; }
+    if (T() && T().t === 'id' && !T().kw && op('.', 1) && op('*', 2)) { const t = toks[p]; p += 3; q.items.push({star:true, qual:t.v, t}); continue; }
+    const e = expr(); let alias = null;
+    if (kw('as')) { p++; const t = T(); if (!t || !(t.t === 'str' || (t.t === 'id' && !t.kw))) throw fail(t); alias = t.v; p++; }
+    else if (T() && ((T().t === 'id' && !T().kw) || T().t === 'str')) { alias = T().v; p++; }
+    q.items.push({e, alias});
+  } while (op(','));
+  if (kw('into')) throw unsupported(T().line, 'SELECT … INTO');
+  const tableRef = () => {
+    const first = ident(), parts = [first];
+    while (op('.')) { p++; parts.push(ident()); }
+    let alias = null;
+    if (kw('as')) { p++; alias = ident().v; } else if (T() && T().t === 'id' && !T().kw) alias = toks[p++].v;
+    return {parts:parts.map(x => x.v), t:first, alias};
+  };
+  if (kw('from')) {
+    p++; q.from.push(tableRef());
+    if (op(',')) throw unsupported(T().line, 'Comma-separated joins');
+    if (kw('inner') && kw('join', 1)) p++;
+    if (kw('join')) { p++; q.from.push(tableRef()); needKw('on'); q.on = cond(); }
+    else if (['left', 'right', 'full', 'cross', 'outer'].some(w => kw(w))) throw unsupported(T().line, `${T().v.toUpperCase()} JOIN`);
+    if (kw('join') || kw('inner')) throw unsupported(T().line, 'More than one JOIN');
+  }
+  if (kw('where')) { p++; q.where = cond(); }
+  if (kw('group')) { p++; needKw('by'); do { if (q.group.length) p++; q.group.push(expr()); } while (op(',')); }
+  if (kw('having')) throw unsupported(T().line, 'HAVING');
+  if (kw('order')) {
+    p++; needKw('by');
+    do { if (q.order.length) p++; const e = expr(); let dir = 'asc'; if (kw('asc')) p++; else if (kw('desc')) { p++; dir = 'desc'; } q.order.push({e, dir}); } while (op(','));
+    if (kw('offset')) throw unsupported(T().line, 'OFFSET … FETCH');
+  }
+  if (kw('union')) throw unsupported(T().line, 'UNION');
+  if (op(';')) p++;
+  if (T()) {
+    if (kw('select') || kw('with')) throw unsupported(T().line, 'More than one statement in a batch (select one and press F5, or separate them with GO)');
+    throw fail(T());
+  }
+  return q;
+}
+
+const DATE_RE = /^(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2})(\.\d+)?)?)?$/;
+function normDate(s){ const m = DATE_RE.exec(s); return m ? `${m[1]} ${m[2] || '00'}:${m[3] || '00'}:${m[4] || '00'}${(m[5] || '.000').padEnd(4, '0').slice(0, 4)}` : null; }
+function toNum(s, t){
+  if (/^\s*[-+]?\d+(\.\d+)?\s*$/.test(s)) return Number(s);
+  throw new SqlError(245, 16, 1, t ? t.line : 1, `Conversion failed when converting the varchar value '${s}' to data type int.`);
+}
+function coerce(a, b, t){                     // SQL Server's implicit conversion, case-insensitive collation
+  if (typeof a === 'number' && typeof b === 'string') return [a, toNum(b, t)];
+  if (typeof a === 'string' && typeof b === 'number') return [toNum(a, t), b];
+  if (typeof a === 'string') { const da = normDate(a), db = normDate(b); if (da && db) return [da, db]; return [a.toLowerCase().trimEnd(), b.toLowerCase().trimEnd()]; }
+  return [a, b];
+}
+function cmp3(a, b, t){ if (a === null || b === null) return null; const [x, y] = coerce(a, b, t); return x < y ? -1 : x > y ? 1 : 0; }
+function sortCmp(a, b){ if (a === b) return 0; if (a === null) return -1; if (b === null) return 1; const [x, y] = coerce(a, b); return x < y ? -1 : x > y ? 1 : 0; }
+function likeRe(pat){
+  let r = '';
+  for (let i = 0; i < pat.length; i++) {
+    const c = pat[i];
+    if (c === '%') r += '[\\s\\S]*';
+    else if (c === '_') r += '[\\s\\S]';
+    else if (c === '[') {
+      const j = pat.indexOf(']', i + 1);
+      if (j > i + 1) { let cls = pat.slice(i + 1, j); const neg = cls[0] === '^'; if (neg) cls = cls.slice(1); r += '[' + (neg ? '^' : '') + cls.replace(/[\\\]]/g, '\\$&') + ']'; i = j; }
+      else r += '\\[';
+    }
+    else r += c.replace(/[.*+?^${}()|\\\]\/]/g, '\\$&');
+  }
+  return new RegExp('^' + r + '$', 'i');
+}
+function arith(o, x, y, t){
+  if (x === null || y === null) return null;
+  if (o === '+' && typeof x === 'string' && typeof y === 'string') return x + y;
+  if (typeof x === 'string') x = toNum(x, t);
+  if (typeof y === 'string') y = toNum(y, t);
+  const ints = Number.isInteger(x) && Number.isInteger(y);
+  if ((o === '/' || o === '%') && y === 0) throw new SqlError(8134, 16, 1, t.line, 'Divide by zero error encountered.');
+  const r = o === '+' ? x + y : o === '-' ? x - y : o === '*' ? x * y : o === '/' ? (ints ? Math.trunc(x / y) : x / y) : x % y;
+  return ints ? r : Math.round(r * 1e6) / 1e6;
+}
+const hasAgg = e => !!e && (e.k === 'agg' || (e.k === 'bin' && (hasAgg(e.a) || hasAgg(e.b))));
+
+function execQuery(q){
+  const sources = q.from.map(f => {
+    const parts = f.parts.map(s => s.toLowerCase());
+    let key = parts.length === 1 ? 'dbo.' + parts[0] : parts.slice(-2).join('.');
+    if ((parts.length === 3 && parts[0] !== 'infra_sim') || parts.length > 3 || !has(TABLES, key))
+      throw new SqlError(208, 16, 1, f.t.line, `Invalid object name '${f.parts.join('.')}'.`);
+    const tb = TABLES[key];
+    return {key, tb, alias:f.alias || f.parts[f.parts.length - 1], cols:tb.cols, low:tb.cols.map(c => c.toLowerCase())};
+  });
+  if (sources.length === 2 && sources[0].alias.toLowerCase() === sources[1].alias.toLowerCase())
+    throw new SqlError(1013, 16, 1, q.from[1].t.line, `The objects "${q.from[0].parts.join('.')}" and "${q.from[1].parts.join('.')}" in the FROM clause have the same exposed names. Use correlation names to distinguish them.`);
+  const resolve = e => {
+    const low = e.name.toLowerCase();
+    if (e.qual) {
+      const s = sources.findIndex(x => x.alias.toLowerCase() === e.qual.toLowerCase());
+      if (s < 0) throw new SqlError(4104, 16, 1, e.t.line, `The multi-part identifier "${e.raw}" could not be bound.`);
+      const c = sources[s].low.indexOf(low);
+      if (c < 0) throw new SqlError(207, 16, 1, e.t.line, `Invalid column name '${e.name}'.`);
+      return {s, c};
+    }
+    const hits = [];
+    sources.forEach((x, s) => { const c = x.low.indexOf(low); if (c >= 0) hits.push({s, c}); });
+    if (!hits.length) throw new SqlError(207, 16, 1, e.t.line, `Invalid column name '${e.name}'.`);
+    if (hits.length > 1) throw new SqlError(209, 16, 1, e.t.line, `Ambiguous column name '${e.name}'.`);
+    return hits[0];
+  };
+  const groupSet = new Set();
+  const notGrouped = (s, c, t) => new SqlError(8120, 16, 1, t ? t.line : 1, `Column '${sources[s].alias}.${sources[s].cols[c]}' is invalid in the select list because it is not contained in either an aggregate function or the GROUP BY clause.`);
+  function compile(e, mode, inWhere){
+    if (e.k === 'lit') return () => e.v;
+    if (e.k === 'col') {
+      const {s, c} = resolve(e);
+      if (mode === 'group') { if (!groupSet.has(s + ':' + c)) throw notGrouped(s, c, e.t); return g => g.length ? g[0][s][c] : null; }
+      return r => r[s][c];
+    }
+    if (e.k === 'bin') { const a = compile(e.a, mode, inWhere), b = compile(e.b, mode, inWhere); return x => arith(e.o, a(x), b(x), e.t); }
+    if (e.k === 'agg') {
+      if (mode !== 'group') throw new SqlError(147, 15, 1, e.t.line, 'An aggregate may not appear in the WHERE clause unless it is in a subquery contained in a HAVING clause or a select list, and the column being aggregated is an outer reference.');
+      if (e.arg && hasAgg(e.arg)) throw new SqlError(130, 16, 1, e.t.line, 'Cannot perform an aggregate function on an expression containing an aggregate or a subquery.');
+      const a = e.arg ? compile(e.arg, 'row') : null;
+      return g => {
+        if (e.fn === 'count') return a ? g.filter(r => a(r) !== null).length : g.length;
+        const vals = g.map(a).filter(v => v !== null);
+        if (!vals.length) return null;
+        if (e.fn === 'min' || e.fn === 'max') return vals.reduce((m, v) => { const c = sortCmp(v, m); return (e.fn === 'min' ? c < 0 : c > 0) ? v : m; });
+        if (vals.some(v => typeof v === 'string')) throw new SqlError(8117, 16, 1, e.t.line, `Operand data type varchar is invalid for ${e.fn} operator.`);
+        const sum = vals.reduce((s, v) => s + v, 0);
+        if (e.fn === 'sum') return Math.round(sum * 1e6) / 1e6;
+        const avg = sum / vals.length;
+        return vals.every(Number.isInteger) ? Math.trunc(avg) : Math.round(avg * 1e6) / 1e6;
+      };
+    }
+    throw new SqlError(102, 15, 1, 1, 'Incorrect syntax.');
+  }
+  function compileCond(e){                    // three-valued logic: true, false or null (unknown)
+    const row = x => compile(x, 'row', true);
+    switch (e.k) {
+      case 'and': { const a = compileCond(e.a), b = compileCond(e.b); return r => { const x = a(r); if (x === false) return false; const y = b(r); if (y === false) return false; return x === null || y === null ? null : true; }; }
+      case 'or':  { const a = compileCond(e.a), b = compileCond(e.b); return r => { const x = a(r); if (x === true) return true; const y = b(r); if (y === true) return true; return x === null || y === null ? null : false; }; }
+      case 'not': { const a = compileCond(e.a); return r => { const x = a(r); return x === null ? null : !x; }; }
+      case 'isnull': { const a = row(e.a); return r => (a(r) === null) !== e.neg; }
+      case 'cmp': { const a = row(e.a), b = row(e.b);
+        return r => { const c = cmp3(a(r), b(r), e.t); if (c === null) return null;
+          return e.o === '=' ? c === 0 : e.o === '<>' || e.o === '!=' ? c !== 0 : e.o === '<' ? c < 0 : e.o === '>' ? c > 0 : e.o === '<=' ? c <= 0 : c >= 0; }; }
+      case 'like': { const a = row(e.a), b = row(e.b), cache = new Map();
+        return r => { const x = a(r), y = b(r); if (x === null || y === null) return null; const k = String(y); if (!cache.has(k)) cache.set(k, likeRe(k)); return cache.get(k).test(String(x)) !== e.neg; }; }
+      case 'in': { const a = row(e.a), list = e.list.map(row);
+        return r => { const x = a(r); if (x === null) return null; let unk = false;
+          for (const f of list) { const c = cmp3(x, f(r), e.t); if (c === 0) return !e.neg; if (c === null) unk = true; }
+          return unk ? null : e.neg; }; }
+      case 'between': { const a = row(e.a), lo = row(e.lo), hi = row(e.hi);
+        return r => { const x = a(r), c1 = cmp3(x, lo(r), e.t), c2 = cmp3(x, hi(r), e.t); if (c1 === null || c2 === null) return null; return (c1 >= 0 && c2 <= 0) !== e.neg; }; }
+    }
+    throw new SqlError(4145, 15, 1, 1, 'An expression of non-boolean type specified in a context where a condition is expected.');
+  }
+
+  const onFn = q.on ? compileCond(q.on) : null;
+  const whereFn = q.where ? compileCond(q.where) : null;
+  const grouped = q.group.length > 0 || q.items.some(it => !it.star && hasAgg(it.e));
+  const groupFns = q.group.map(g => {
+    if (g.k !== 'col') throw unsupported(g.t ? g.t.line : 1, 'GROUP BY on an expression');
+    const {s, c} = resolve(g); groupSet.add(s + ':' + c); return r => r[s][c];
+  });
+  const mode = grouped ? 'group' : 'row';
+  const outCols = [], outFns = [], itemOut = [];
+  q.items.forEach((it, idx) => {
+    itemOut[idx] = outCols.length;
+    if (it.star) {
+      if (!sources.length) throw new SqlError(263, 16, 1, it.t.line, 'Must specify table to select from.');
+      const which = it.qual ? sources.findIndex(x => x.alias.toLowerCase() === it.qual.toLowerCase()) : -1;
+      if (it.qual && which < 0) throw new SqlError(4104, 16, 1, it.t.line, `The multi-part identifier "${it.qual}" could not be bound.`);
+      (it.qual ? [which] : sources.map((_, i) => i)).forEach(s => sources[s].cols.forEach((c, ci) => {
+        if (grouped && !groupSet.has(s + ':' + ci)) throw notGrouped(s, ci, it.t);
+        outCols.push(c); outFns.push(grouped ? (g => g.length ? g[0][s][ci] : null) : (r => r[s][ci]));
+      }));
+      return;
+    }
+    outFns.push(compile(it.e, mode));
+    if (it.alias) outCols.push(it.alias);
+    else if (it.e.k === 'col') { const {s, c} = resolve(it.e); outCols.push(sources[s].cols[c]); }
+    else outCols.push('(No column name)');
+  });
+  const orderFns = q.order.map(o => {
+    const e = o.e;
+    if (e.k === 'lit' && typeof e.v === 'number') {
+      if (!Number.isInteger(e.v) || e.v < 1 || e.v > outCols.length) throw new SqlError(108, 15, 1, e.t.line, `The ORDER BY position number ${e.v} is out of range of the number of items in the select list.`);
+      return {out:e.v - 1, dir:o.dir};
+    }
+    if (e.k === 'col' && !e.qual) {
+      const i = q.items.findIndex(it => it.alias && it.alias.toLowerCase() === e.name.toLowerCase());
+      if (i >= 0) return {out:itemOut[i], dir:o.dir};
+    }
+    if (q.distinct) {
+      const i = e.k === 'col' ? outCols.findIndex(c => c.toLowerCase() === e.name.toLowerCase()) : -1;
+      if (i < 0) throw new SqlError(145, 15, 1, e.t ? e.t.line : 1, 'ORDER BY items must appear in the select list if SELECT DISTINCT is specified.');
+      return {out:i, dir:o.dir};
+    }
+    return {fn:compile(e, mode), dir:o.dir};
+  });
+
+  let tuples = sources.length ? sources[0].tb.rows.map(r => [r]) : [[]];
+  if (sources.length === 2) {
+    const out = [];
+    for (const t of tuples) for (const r2 of sources[1].tb.rows) { const tt = [t[0], r2]; if (onFn(tt) === true) out.push(tt); }
+    tuples = out;
+  }
+  if (whereFn) tuples = tuples.filter(t => whereFn(t) === true);
+  let units = tuples;
+  if (grouped) {
+    if (q.group.length) {
+      const map = new Map();
+      for (const t of tuples) {
+        const k = JSON.stringify(groupFns.map(f => { const v = f(t); return typeof v === 'string' ? v.toLowerCase().trimEnd() : v; }));
+        if (!map.has(k)) map.set(k, []);
+        map.get(k).push(t);
+      }
+      units = [...map.values()];
+    } else units = [tuples];
+  }
+  let rows = units.map(u => ({v:outFns.map(f => f(u)), k:orderFns.map(o => o.fn ? o.fn(u) : null)}));
+  rows.forEach(r => orderFns.forEach((o, i) => { if (!o.fn) r.k[i] = r.v[o.out]; }));
+  if (q.distinct) {
+    const seen = new Set();
+    rows = rows.filter(r => { const k = JSON.stringify(r.v.map(v => typeof v === 'string' ? v.toLowerCase() : v)); if (seen.has(k)) return false; seen.add(k); return true; });
+  }
+  if (orderFns.length) rows = rows.map((r, i) => [r, i]).sort((a, b) => {
+    for (let j = 0; j < orderFns.length; j++) { const c = sortCmp(a[0].k[j], b[0].k[j]); if (c) return orderFns[j].dir === 'desc' ? -c : c; }
+    return a[1] - b[1];
+  }).map(x => x[0]);
+  if (q.top !== null) rows = rows.slice(0, q.top);
+  return {cols:outCols, rows:rows.map(r => r.v), tables:sources.map(s => s.key)};
+}
+
+function runBatch(code){
+  const toks = tokenize(code);
+  if (!toks.length) return null;
+  const f = toks[0];
+  if (f.t === 'id' && DENIED.includes(f.low)) {
+    const skip = ['table', 'view', 'procedure', 'proc', 'into', 'from', 'function', 'index', 'on'];
+    let i = 1; while (toks[i] && toks[i].t === 'id' && skip.includes(toks[i].low)) i++;
+    const parts = [];
+    while (toks[i] && toks[i].t === 'id') { parts.push(toks[i].v); i++; if (toks[i] && toks[i].t === 'op' && toks[i].v === '.') i++; else break; }
+    const verb = f.low === 'exec' ? 'EXECUTE' : f.low.toUpperCase();
     const name = parts.pop() || '', schema = parts.pop() || 'dbo';
-    return {error:true, cols:null, rows:[], msgs:[msg(229, 14, 5, lineOf(text, first),
-      name ? `The ${verb.toUpperCase()} permission was denied on the object '${name}', database 'Infra_Sim', schema '${schema}'.`
-           : `The ${verb.toUpperCase()} permission was denied in database 'Infra_Sim'.`), done()]};
+    throw new SqlError(229, 14, 5, f.line, name ? `The ${verb} permission was denied on the object '${name}', database 'Infra_Sim', schema '${schema}'.` : `The ${verb} permission was denied in database 'Infra_Sim'.`);
   }
-  if (verb !== 'select' && verb !== 'with') return {error:true, cols:null, rows:[], msgs:[msg(102, 15, 1, lineOf(text, first), `Incorrect syntax near '${first}'.`), done()]};
-  const refs = [...code.matchAll(/\b(?:from|join)\s+((?:\[?\w+\]?\.)?\[?\w+\]?)/gi)].map(m => m[1]);
-  const top = code.match(/^select\s+top\s*\(?\s*(\d+)\s*\)?/i);
-  const limit = top ? +top[1] : Infinity;
-  if (!refs.length) {
-    const expr = code.replace(/^select\s+/i, '').replace(/;\s*$/, '').trim();
-    const lit = expr.match(/^'((?:[^']|'')*)'$/);
-    if (lit) return ok(['(No column name)'], [[lit[1].replace(/''/g, "'")]], limit);
-    if (/^-?\d+(\.\d+)?$/.test(expr)) return ok(['(No column name)'], [[expr]], limit);
-    if (/^getdate\(\s*\)$/i.test(expr)) return ok(['(No column name)'], [[`${LAST_LATE.iso} 09:14:03.117`]], limit);
-    const bad = expr.split(/[\s,(]/)[0] || expr;
-    return {error:true, cols:null, rows:[], msgs:[msg(207, 16, 1, lineOf(text, bad), `Invalid column name '${bad}'.`), done()]};
-  }
-  for (const ref of refs) {
-    const key = ref.replace(/[\[\]]/g, '').toLowerCase();
-    if (!has(TABLES, key)) {
-      const shown = ref.replace(/[\[\]]/g, '');
-      return {error:true, cols:null, rows:[], msgs:[msg(208, 16, 1, lineOf(text, ref), `Invalid object name '${shown}'.`), done()]};
+  if (f.t === 'id' && STMTS.includes(f.low)) throw unsupported(f.line, `${f.v.toUpperCase()} statements`);
+  if (!(f.t === 'id' && (f.low === 'select' || f.low === 'with'))) throw new SqlError(102, 15, 1, f.line, `Incorrect syntax near '${f.raw}'.`);
+  return execQuery(parseSelect(toks));
+}
+/* runs a script: batches split on GO, each batch one statement; never throws for SQL mistakes */
+function runSql(src){
+  const text = String(src == null ? '' : src);
+  const t0 = performance.now();
+  if (text.length > MAX_SQL) return {error:true, sets:[], cols:null, rows:[], tables:[], ms:0,
+    msgs:[{err:true, text:`This batch is ${fmtN(text.length, 0)} characters long. The simulation runs batches of up to ${fmtN(MAX_SQL, 0)} characters.`}, done()]};
+  const sets = [], msgs = [], tables = []; let error = false, ran = false;
+  for (const b of text.split(/^[ \t]*GO[ \t]*;?[ \t]*(?:\r?\n|$)/im)) {
+    try {
+      const r = runBatch(b);
+      if (!r) continue;
+      ran = true; sets.push(r); tables.push(...r.tables);
+      msgs.push({text:`(${plural(r.rows.length, 'row')} affected)`});
+    } catch (e) {
+      if (!(e instanceof SqlError)) throw e;
+      ran = true; error = true;
+      msgs.push(e.num ? msg(e.num, e.lvl, e.st, e.line, e.message) : {err:true, text:e.message});
     }
   }
-  const keys = refs.map(r => r.replace(/[\[\]]/g, '').toLowerCase());
-  const pick = keys.includes('infra.sysjobschedules') ? 'infra.sysjobschedules' : keys[0];
-  const t = TABLES[pick];
-  const res = ok(t.cols, t.rows, limit);
-  res.table = pick;
-  return res;
-}
-function ok(cols, rows, limit){
-  const out = rows.slice(0, limit);
-  return {cols, rows:out, msgs:[{text:`(${out.length} row${out.length === 1 ? '' : 's'} affected)`}, done()]};
+  if (!ran) msgs.push({text:'Commands completed successfully.'});
+  msgs.push(done());
+  const last = sets[sets.length - 1];
+  return {error, sets, cols:last ? last.cols : null, rows:last ? last.rows : [], msgs, tables, ms:performance.now() - t0};
 }
 
 /* ============ coach ============ */
@@ -1017,7 +1697,7 @@ const COACH = {
     ? ['7 / 7 · Fix', 'The fix depends on the cause. Diagnose first.', 'Go to Diagnose', () => go('diagnose'), null]
     : !S.fix
       ? ['7 / 7 · Fix', 'Move IndexOptimize back outside the ETL window. The schedule dialog refuses any time that would overlap 01:00 – 07:00.', 'Move it to Sunday 09:00', () => applyFix({day:'Sunday', time:'09:00', online:false}), '#editSched']
-      : ['7 / 7 · Fix', 'Sundays finish before 07:00 again. That is the whole engagement in miniature: pattern, layer, overlap, mechanism, fix, proof.', 'Start over', () => restart(), '#startover']
+      : ['7 / 7 · Fix', 'Sundays finish before 07:00 again. That is the whole engagement in miniature: pattern, layer, overlap, mechanism, fix, proof.', 'Start over', () => requestRestart(), '#startover']
 };
 let coachAction = null;
 function coach(){
@@ -1030,60 +1710,193 @@ function coach(){
   const i = ORDER.indexOf(S.screen);
   c.innerHTML = `<div><div class="step">${esc(d[0])}</div><div class="txt">${d[1]}</div></div>
     <div class="acts">${i > 0 ? `<button data-act="coachBack">Back</button>` : ''}
-    <button data-act="hideguide">Hide</button>
+    <button data-act="hideguide" title="Hide the guide and explore freely">Hide</button>
     <button class="go" data-act="coachDo">${esc(d[2])}</button></div>`;
   if (d[4]) { const el = $(d[4]); if (el) el.classList.add('pulse'); }
 }
 
+/* ============ notebook (kept in this browser only) ============ */
+const NOTE_MAX = 200, NOTE_LEN = 2000;
+const uid = () => 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+function loadNotes(){
+  const v = store.get('notes', []);
+  if (!Array.isArray(v)) return [];
+  return v.filter(n => n && typeof n.text === 'string').slice(0, NOTE_MAX).map(n => ({
+    id:String(n.id || '').replace(/[^\w-]/g, '').slice(0, 40) || uid(),
+    text:n.text.slice(0, NOTE_LEN), step:has(SCREEN_META, n.step) ? n.step : 'ticket', at:String(n.at || '').slice(0, 40)}));
+}
+let NOTES = loadNotes();
+function saveNotes(){ if (store.ok && !store.set('notes', NOTES)) toast('Could not save your notes in this browser.', 'err'); }
+function paintBadge(){ const b = $('#notesbadge'); b.textContent = NOTES.length; b.hidden = !NOTES.length; }
+function addNote(text, step){
+  const t = String(text || '').trim().slice(0, NOTE_LEN);
+  if (!t) return 'empty';
+  if (NOTES.some(n => n.text === t)) return 'dup';
+  if (NOTES.length >= NOTE_MAX) return 'full';
+  NOTES.push({id:uid(), text:t, step:has(SCREEN_META, step) ? step : 'ticket',
+    at:new Date().toLocaleString('en-GB', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'})});
+  saveNotes(); paintBadge();
+  return 'ok';
+}
+const NOTE_MSG = {ok:'Pinned to your notes', dup:'That is already in your notes', full:`Your notebook is full (${NOTE_MAX} notes). Delete some first.`, empty:'Write something first.'};
+function notesHTML(){
+  return `<div class="mb form">
+    ${store.ok ? '' : '<p class="warnline" id="noStore">Your browser is blocking storage, so these notes last only until you close the page. Export them to keep them.</p>'}
+    <label class="lb" for="noteNew">Add a note</label>
+    <textarea class="input" id="noteNew" rows="3" maxlength="${NOTE_LEN}" placeholder="What did you find, and where?" autofocus></textarea>
+    <p class="formerr" id="noteErr" role="alert"></p>
+    <div class="row" style="margin:8px 0 16px"><button class="btn primary sm" id="noteAdd" data-act="noteAdd">Add note</button><span class="note" style="margin:0 0 0 auto">${NOTES.length} / ${NOTE_MAX}</span></div>
+    ${NOTES.length ? `<ul class="notelist" id="notelist">${NOTES.slice().reverse().map(n => `<li>
+        <div class="meta"><span class="chip grey">${esc(SCREEN_META[n.step].rail)}</span><span>${esc(n.at)}</span>
+          <button class="iconbtn" data-act="noteDel" data-arg="${esc(n.id)}" aria-label="Delete this note">${svg(IC.trash, 15)}</button></div>
+        <label class="vh" for="note-${esc(n.id)}">Note</label>
+        <textarea class="input" id="note-${esc(n.id)}" rows="3" maxlength="${NOTE_LEN}" data-input="noteEdit" data-id="${esc(n.id)}">${esc(n.text)}</textarea></li>`).join('')}</ul>`
+      : '<div class="empty" id="notesEmpty">No notes yet. Use <b>Pin</b> on a chart, a run, a query result or a what-if, or write one above.</div>'}
+  </div>`;
+}
+function notesFoot(confirming){
+  return confirming
+    ? `<span class="confirmtxt">Delete all ${plural(NOTES.length, 'note')}? This cannot be undone.</span><button class="btn" data-act="notesClearCancel">Cancel</button><button class="btn danger" id="notesClearYes" data-act="notesClearYes">Delete all</button>`
+    : `<button class="btn" id="notesExport" data-act="notesExport" ${NOTES.length ? '' : 'disabled'}>${svg(IC.download, 14)} Export as Markdown</button><button class="btn" id="notesClear" data-act="notesClear" ${NOTES.length ? '' : 'disabled'}>Clear all</button>`;
+}
+function openNotes(confirming){ modalShell(`Investigation notes (${NOTES.length})`, notesHTML(), notesFoot(!!confirming), {cls:'side', kind:'notes'}); }
+function notesMarkdown(){
+  const out = ['# INC-20418 investigation notes', '', `_Exported ${new Date().toISOString().slice(0, 16).replace('T', ' ')} from the MSS Sim walkthrough._`, ''];
+  ORDER.forEach(k => {
+    const list = NOTES.filter(n => n.step === k);
+    if (!list.length) return;
+    out.push(`## ${SCREEN_META[k].rail}`, '');
+    list.forEach(n => out.push(`- ${n.text.replace(/\n+/g, ' ')}${n.at ? ` _(${n.at})_` : ''}`));
+    out.push('');
+  });
+  return out.join('\n');
+}
+
 /* ============ modals ============ */
 let lastFocus = null;
-function modalShell(title, bodyHTML, footHTML){
+function modalShell(title, bodyHTML, footHTML, opts={}){
   const m = $('#modal');
   if (!m.classList.contains('on')) lastFocus = document.activeElement;
-  m.className = 'modal on';
-  m.innerHTML = `<div class="box">
+  m.className = 'modal on' + (opts.cls === 'side' ? ' side' : '');
+  m.dataset.kind = opts.kind || '';
+  m.innerHTML = `<div class="box${opts.cls === 'wide' ? ' wide' : ''}">
     <div class="mh"><b id="modaltitle">${esc(title)}</b>
       <button class="btn ghost sm" data-act="closeModal" aria-label="Close" style="margin-left:auto">${svg(IC.x, 16, 2.2)}</button></div>
-    ${bodyHTML}<div class="mf">${footHTML}</div></div>`;
-  const f = m.querySelector('[autofocus]') || m.querySelector('input,select,button');
+    ${bodyHTML}${footHTML ? `<div class="mf">${footHTML}</div>` : ''}</div>`;
+  const f = m.querySelector('[autofocus]') || m.querySelector('input,select,textarea,button');
   if (f) f.focus();
   return m;
 }
 function closeModal(){
   const m = $('#modal');
   if (!m.classList.contains('on')) return;
-  m.className = 'modal'; m.innerHTML = '';
+  m.className = 'modal'; m.innerHTML = ''; m.dataset.kind = '';
   if (lastFocus && document.contains(lastFocus)) lastFocus.focus();
   lastFocus = null;
 }
+const modalKind = () => $('#modal').classList.contains('on') ? $('#modal').dataset.kind : '';
 function openSearch(){
   const m = modalShell('Go to…',
     `<div class="searchbox">${svg(IC.search, 16)}<label class="vh" for="gosearch">Search steps</label><input class="input" id="gosearch" placeholder="Search…" autofocus data-input="goSearch"></div>
-     <div class="mb" id="gohits"></div>`, `<button class="btn" data-act="closeModal">Cancel</button>`);
+     <div class="mb" id="gohits"></div>`, `<button class="btn" data-act="closeModal">Cancel</button>`, {kind:'search'});
   paintSearch('');
   return m;
 }
 function paintSearch(q){
   const ql = q.trim().toLowerCase();
-  const hits = ORDER.filter(k => !ql || SCREEN_META[k].rail.toLowerCase().includes(ql) || SCREEN_META[k].crumb.toLowerCase().includes(ql));
-  $('#gohits').innerHTML = hits.map(k => `<button class="pick" data-act="goto" data-arg="${k}">${svg(IC[SCREEN_META[k].icon], 16)}<span class="nm">${esc(SCREEN_META[k].rail)} <span style="color:var(--ink-3)">· ${esc(SCREEN_META[k].crumb)}</span></span>${svg(IC.arrow, 15, 2)}</button>`).join('')
+  const hits = ORDER.filter(k => !ql || SCREEN_META[k].rail.toLowerCase().includes(ql) || crumbOf(k).toLowerCase().includes(ql));
+  $('#gohits').innerHTML = hits.map(k => `<button class="pick" data-act="goto" data-arg="${k}">${svg(IC[SCREEN_META[k].icon], 16)}<span class="nm">${esc(SCREEN_META[k].rail)} <span style="color:var(--ink-3)">· ${esc(crumbOf(k))}</span></span>${svg(IC.arrow, 15, 2)}</button>`).join('')
     || `<div class="empty">Nothing matches “${esc(q)}”.</div>`;
 }
 function openNotifications(){
-  const items = [['INC-20418 assigned to you', 'Monday dashboards not ready', '2h'],
-                 ['Job succeeded', JOB + ' · ' + hm(LAST_LATE.end), LAST_LATE.iso.slice(5)],
-                 ['Schedule changed', MAINT + ' · by MRH\\ops.admin', '07-17']];
-  modalShell('Notifications', `<div class="mb">${items.map(i => `<div class="pick"><span class="nm"><b>${esc(i[0])}</b><span style="color:var(--ink-3)"> — ${esc(i[1])}</span></span><span class="chip">${esc(i[2])}</span></div>`).join('')}</div>`,
-    `<button class="btn" data-act="closeModal">Close</button>`);
+  const items = [['INC-20418 assigned to you', 'Monday dashboards not ready', '2h', 'ticket'],
+                 ['Job succeeded', JOB + ' · finished ' + hm(LAST_LATE.end), LAST_LATE.iso.slice(5), 'agent'],
+                 ['Schedule changed', MAINT + ' · by MRH\\ops.admin', '07-17', 'sql']];
+  modalShell('Notifications', `<div class="mb">${items.map(i => `<button class="pick" data-act="goto" data-arg="${i[3]}"><span class="nm"><b>${esc(i[0])}</b><span style="color:var(--ink-3)"> — ${esc(i[1])}</span></span><span class="chip">${esc(i[2])}</span></button>`).join('')}</div>`,
+    `<button class="btn" data-act="closeModal">Close</button>`, {kind:'notifications'});
 }
 function openHelp(){
-  modalShell('Help', `<div class="mb form"><ul class="facts">
-    <li><span>Run the query (SSMS step)</span><b><kbd>F5</kbd> or <kbd>Ctrl</kbd>+<kbd>Enter</kbd></b></li>
+  modalShell('Help and shortcuts', `<div class="mb form"><ul class="facts">
+    <li><span>Run the query, or only the selected text</span><b><kbd>F5</kbd> · <kbd>Ctrl</kbd>+<kbd>Enter</kbd></b></li>
     <li><span>Go to a step</span><b><kbd>Ctrl</kbd>+<kbd>K</kbd></b></li>
+    <li><span>Open your notes</span><b><kbd>N</kbd></b></li>
+    <li><span>This help</span><b><kbd>?</kbd></b></li>
     <li><span>Close a dialog</span><b><kbd>Esc</kbd></b></li>
-    <li><span>Link to a step</span><b class="mono">MSS-sim.html#sql</b></li></ul>
-    <p class="note">Everything here is simulated in the page from the same shapes the simulator produces. Run the real lab with <code>bisim lab start 07</code>.</p></div>`,
-    `<button class="btn" data-act="closeModal">Close</button>`);
+    <li><span>Link to a step</span><b class="mono">#agent #ssis #sql #perf #fix</b></li></ul>
+    <p class="note">Off the guide you can sort and filter the job history, open any run's steps, open any SSIS package's messages, write your own SQL in several tabs, compare any two nights in Perfmon, and try other fixes. Pin anything interesting to your notes and export them.</p>
+    <p class="note">Everything is simulated in this page from the same shapes the simulator produces. Run the real lab with <code>bisim lab start 07</code>.</p></div>`,
+    `<button class="btn" data-act="glossary">Glossary</button><button class="btn" data-act="notes">My notes</button><button class="btn" data-act="closeModal">Close</button>`, {kind:'help'});
+}
+function openGlossary(){
+  modalShell('Glossary', `<div class="searchbox">${svg(IC.search, 16)}<label class="vh" for="glosssearch">Search the glossary</label><input class="input" id="glosssearch" placeholder="Search terms…" autofocus data-input="glossSearch"></div>
+    <div class="mb form" style="padding-top:0"><dl class="gloss" id="glosslist"></dl></div>`, `<button class="btn" data-act="closeModal">Close</button>`, {kind:'glossary'});
+  paintGlossary('');
+}
+function paintGlossary(q){
+  const ql = q.trim().toLowerCase();
+  const hits = GLOSSARY.filter(([t, d]) => !ql || t.toLowerCase().includes(ql) || d.toLowerCase().includes(ql));
+  $('#glosslist').innerHTML = hits.map(([t, d]) => `<dt>${esc(t)}</dt><dd>${esc(d)}</dd>`).join('') || `<div class="empty" id="glossEmpty">No term matches “${esc(q)}”.</div>`;
+}
+/* Log File Viewer for one run of the job */
+function openJobRun(iso){
+  const n = nightOf(iso);
+  if (!n) { toast('There is no run on ' + iso + '.', 'err'); return; }
+  const steps = jobSteps(n);
+  const prev = NIGHTS[n.i - 1], next = NIGHTS[n.i + 1];
+  const loadAvg = (() => { const r = NIGHTS.slice(Math.max(0, n.i - 28), n.i); if (!r.length) return steps[1].end - steps[1].start; return r.reduce((a, x) => { const s = jobSteps(x)[1]; return a + s.end - s.start; }, 0) / r.length; })();
+  const loadDur = steps[1].end - steps[1].start;
+  const stepMsg = s => s.kind === 'ssis'
+    ? `Executed as user: MRH\\svc_sqlagent. Microsoft (R) SQL Server Execute Package Utility Version 15.0.4153.1 for 64-bit. Started: ${hms(s.start)}. DTExec: The package execution returned DTSER_SUCCESS (0). Finished: ${hms(s.end)}. Elapsed: ${fmtN(s.end - s.start, 0)} seconds. The step succeeded.`
+    : s.kind === 'ssas' ? 'Executed as user: MRH\\svc_ssas. <return xmlns="urn:schemas-microsoft-com:xml-analysis"><root xmlns="urn:schemas-microsoft-com:xml-analysis:empty" /></return>. The step succeeded.'
+    : 'Executed as user: MRH\\svc_sqlagent. EXEC rpt.RefreshReportCache; (4 rows affected). The step succeeded.';
+  const rows = [[{html:'<b>0</b>'}, '(Job outcome)', 'Succeeded', hms(3600), hdur(n.end - 3600), {html:`<span class="logmsg">The job succeeded. The Job was invoked by Schedule 12 (Nightly 01:00). The last step to run was step 4 (Refresh report cache).</span>`}],
+    ...steps.map(s => [String(s.id), s.name, 'Succeeded', hms(s.start), hdur(s.end - s.start), {html:`<span class="logmsg">${esc(stepMsg(s))}</span>`}])];
+  const pinText = `Run ${n.iso} (${DAYS[n.wd]}): finished ${hm(n.end)}${n.late ? ' (LATE)' : ''}; Load EDW step ${hdur(loadDur)} against ${hdur(loadAvg)} usual (${(loadDur / loadAvg).toFixed(2)}×).`;
+  modalShell(`Log File Viewer · ${JOB} · ${n.iso}`, `<div class="mb form">
+      <div class="row" style="margin-bottom:12px"><span class="chip ${n.late ? 'bad' : 'ok'}" id="runChip">${n.late ? 'Late' : 'On time'} · finished ${hm(n.end)}</span><span class="chip grey">${DAYS[n.wd]}</span>
+        <span class="chip ${loadDur / loadAvg >= 1.3 ? 'bad' : 'grey'}">Load step ${(loadDur / loadAvg).toFixed(2)}× usual</span>${pinBtn(pinText, 'pin-run')}</div>
+      ${tableHTML(['step_id','step_name','status','start','duration','message'], rows, {wrap:i => i === 5})}
+      <p class="note">${loadDur / loadAvg >= 1.3 ? `The Load step took ${hdur(loadDur)}; over the 28 nights before it averaged ${hdur(loadAvg)}. Every step still <i>succeeded</i>.` : 'Every step ran close to its usual time.'}</p></div>`,
+    `<button class="btn" data-act="jobRun" data-arg="${prev ? prev.iso : ''}" id="runPrev" ${prev ? '' : 'disabled'}>${svg(IC.arrowL, 14, 2)} Previous night</button>
+     <button class="btn" data-act="jobRun" data-arg="${next ? next.iso : ''}" id="runNext" ${next ? '' : 'disabled'}>Next night ${svg(IC.arrow, 14, 2)}</button>
+     <button class="btn" data-act="closeModal">Close</button>`, {cls:'wide', kind:'jobrun'});
+}
+/* Overview / Messages for one SSIS package execution */
+let pkgView = {k:0, tab:'overview'};
+function pkgRowsOf(n, k){
+  const p = PKGS[k], r = mulberry32(n.i * 31 + k)();
+  if (p.layer === 'Dimension') return Math.round(p.base * 900 * (0.9 + r * 0.2));
+  return Math.round(p.base * 26000 * (n.sunday ? 1.08 : 1) * (0.95 + r * 0.1));
+}
+function openPkg(k, tab){
+  const n = nightOf(S.ssis.date) || LAST_LATE;
+  if (!Number.isInteger(k) || k < 0 || k >= PKGS.length) return;
+  pkgView = {k, tab:tab === 'messages' ? 'messages' : 'overview'};
+  const p = n.pk[k], avg = avgBefore(n.i, k), rows = pkgRowsOf(n, k), ratio = p.dur / avg;
+  const execId = 710000 + n.i * 10 + k, end = p.start + p.dur;
+  const target = p.n.replace('Load_', 'dw.').replace('Extract_', 'stg.').replace('.dtsx', '');
+  const msgs = [[p.start, 'Information', p.n, 'Validation has started.'],
+    [p.start + 2, 'Information', p.n, 'Validation is complete.'],
+    [p.start + 3, 'Information', 'Data Flow Task', 'The buffer manager allocated 10 buffers (DefaultBufferMaxRows 10000, DefaultBufferSize 10485760).']];
+  if (p.layer === 'Fact' && n.overlap) msgs.push([p.start + Math.round(p.dur * 0.1), 'Warning', 'etl framework audit',
+    `The destination waited ${hdur(p.dur - avg)} for a lock on ${target} partition ${16 + Number(n.iso.slice(5, 7))} (LCK_M_IX, blocked by session 87: ALTER INDEX … REBUILD).`]);
+  msgs.push([end - 1, 'Information', `OLE DB Destination [${target}]`, `"OLE DB Destination" wrote ${fmtN(rows, 0)} rows.`],
+            [end, 'Information', p.n, 'Package execution succeeded. Finished, 100 percent complete.']);
+  const tabs = `<div class="mtabs" role="tablist"><button role="tab" id="pkgtab-overview" aria-selected="${pkgView.tab === 'overview'}" data-act="pkgTab" data-arg="overview">Overview</button><button role="tab" id="pkgtab-messages" aria-selected="${pkgView.tab === 'messages'}" data-act="pkgTab" data-arg="messages">Messages (${msgs.length})</button></div>`;
+  const body = pkgView.tab === 'overview'
+    ? `<ul class="facts"><li><span>execution_id</span><b class="mono">${execId}</b></li><li><span>status</span><b>7 (Succeeded)</b></li>
+        <li><span>start_time</span><b class="mono">${n.iso} ${hms(p.start)}</b></li><li><span>end_time</span><b class="mono">${n.iso} ${hms(end)}</b></li>
+        <li><span>duration</span><b>${hdur(p.dur)} (${ratio.toFixed(2)}× the 28-night average of ${hdur(avg)})</b></li>
+        <li><span>rows written</span><b>${fmtN(rows, 0)}</b></li><li><span>caller</span><b class="mono">MRH\\svc_sqlagent</b></li></ul>
+       <p class="note">${ratio >= 1.3 ? 'The same number of rows as usual, written far more slowly: the package was waiting, not working harder.' : 'A normal run for this package.'}</p>`
+    : tableHTML(['message_time','message_type','message_source','message'], msgs.map(m => [hms(m[0]), m[1], m[2], m[3]]), {wrap:i => i === 3, hl:i => msgs[i][1] === 'Warning'});
+  modalShell(`${p.n} · ${n.iso}`, `${tabs}<div class="mb form" role="tabpanel">${body}<div class="row" style="margin-top:12px">${pinBtn(`SSIS ${p.n} on ${n.iso}: ${hdur(p.dur)} against a ${hdur(avg)} average (${ratio.toFixed(2)}×), ${fmtN(rows, 0)} rows written.`, 'pin-pkg')}</div></div>`,
+    `<button class="btn" data-act="closeModal">Close</button>`, {cls:'wide', kind:'pkg'});
+}
+function openHistory(){
+  const h = S.sql.history;
+  modalShell('Query history', `<div class="mb">${h.length ? h.map((e, i) => `<button class="pick" data-act="histLoad" data-arg="${i}"><span class="nm"><span class="mono" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(e.text.replace(/\s+/g, ' ').slice(0, 140))}</span><span style="color:var(--ink-3);font-size:12px">${esc(e.at)} · ${e.ok ? plural(e.rows, 'row') : 'error'}</span></span></button>`).join('')
+    : '<div class="empty">No queries run yet.</div>'}</div>`, `<button class="btn" data-act="closeModal">Close</button>`, {kind:'history'});
 }
 const RUN_MIN = 255;                          // the rebuild takes about 4h 15m
 function scheduleProblem(day, time){
@@ -1098,20 +1911,19 @@ function scheduleProblem(day, time){
   return '';
 }
 function editSchedule(){
-  const cur = S.fix || {day:'Sunday', time:'00:30', online:false};
+  const cur = S.fix || {day:'Sunday', time:S.whatif === 'schedule' ? '09:00' : '00:30', online:false};
   modalShell('Job Schedule Properties · ' + MAINT, `<div class="mb form">
       <div class="field"><label for="s_day">Occurs weekly on</label>
         <select class="input" id="s_day">${['Saturday','Sunday'].map(d => `<option ${d === cur.day ? 'selected' : ''}>${d}</option>`).join('')}</select></div>
       <div class="field"><label for="s_time">Starting at</label><input class="input" type="time" id="s_time" value="${esc(cur.time)}" aria-describedby="s_err"></div>
       <label class="check" style="padding-top:0"><input type="checkbox" id="s_online" ${cur.online ? 'checked' : ''}> Also rebuild with <code>ONLINE = ON</code> (Enterprise)</label>
       <p class="formerr" id="s_err" role="alert"></p></div>`,
-    `<button class="btn" data-act="closeModal">Cancel</button><button class="btn primary" id="s_ok" data-act="saveSchedule">OK</button>`);
+    `<button class="btn" data-act="closeModal">Cancel</button><button class="btn primary" id="s_ok" data-act="saveSchedule">OK</button>`, {kind:'schedule'});
 }
 function saveSchedule(){
   const day = $('#s_day').value, time = $('#s_time').value, online = $('#s_online').checked;
   const p = scheduleProblem(day, time);
-  const err = $('#s_err');
-  if (p) { err.textContent = p; $('#s_time').setAttribute('aria-invalid', 'true'); $('#s_time').focus(); return; }
+  if (p) { $('#s_err').textContent = p; $('#s_time').setAttribute('aria-invalid', 'true'); $('#s_time').focus(); return; }
   closeModal();
   applyFix({day, time, online});
 }
@@ -1123,19 +1935,38 @@ function setAgent(p){
   render();
 }
 function setSql(text, preset){
-  S.sql.text = text; S.sql.preset = preset;
+  const t = curTab(); t.text = text; t.preset = preset;
   const ed = $('#editor'); if (ed) ed.value = text;       // runNow() reads the editor
 }
 function loadPreset(k){ if (has(TOOLKIT, k)) setSql(TOOLKIT[k].sql, k); }
 function runNow(){
-  const ed = $('#editor');
-  if (ed) S.sql.text = ed.value;
-  const r = runSql(S.sql.text);
-  S.sql.result = r;
-  S.sql.tab = r.cols ? 'results' : 'messages';
-  if (r.table === 'infra.commandlog') S.sql.seen.commandlog = true;
-  if (r.table === 'infra.sysjobschedules') S.sql.seen.schedule = true;
+  const t = curTab(), ed = $('#editor');
+  let code = t.text, selection = false;
+  if (ed) {
+    t.text = ed.value; code = ed.value;
+    if (ed.selectionEnd > ed.selectionStart && ed.value.slice(ed.selectionStart, ed.selectionEnd).trim()) { code = ed.value.slice(ed.selectionStart, ed.selectionEnd); selection = true; }
+  }
+  let r;
+  try { r = runSql(code); }
+  catch (e) { r = {error:true, sets:[], cols:null, rows:[], tables:[], ms:0, msgs:[{err:true, text:'The simulation hit an internal error running this query: ' + (e && e.message || e)}, done()]}; }
+  r.selection = selection; r.ran = code;
+  t.result = r;
+  t.tab = r.sets.length ? 'results' : 'messages';
+  if (r.sets.some(s => s.tables.includes('infra.commandlog') && s.rows.length)) S.sql.seen.commandlog = true;
+  if (r.tables.includes('infra.sysjobschedules')) S.sql.seen.schedule = true;
+  const trimmed = code.trim().slice(0, MAX_SQL);
+  if (trimmed && (!S.sql.history[0] || S.sql.history[0].text !== trimmed)) {
+    S.sql.history.unshift({text:trimmed, at:new Date().toLocaleTimeString('en-GB'), ok:!r.error, rows:r.rows.length});
+    S.sql.history.length = Math.min(S.sql.history.length, MAX_HISTORY);
+  }
   render();
+}
+function newTab(text, preset){
+  if (S.sql.tabs.length >= MAX_TABS) { toast(`Close a query window first (${MAX_TABS} open).`, 'err'); return false; }
+  const id = ++S.sql.seq;
+  S.sql.tabs.push({id, title:`SQLQuery${id}.sql`, text:text || '', preset:preset || 'custom', result:null, tab:'results'});
+  S.sql.active = S.sql.tabs.length - 1;
+  return true;
 }
 function submitDiag(){
   const p = S.diag.picked;
@@ -1157,28 +1988,103 @@ function applyFix(f){
 function restart(){
   closeModal();
   S = initState();
+  S.coachOn = true; store.set('coachOn', true);
   go('ticket');
   toast('Demo reset');
 }
+function requestRestart(){
+  if (!NOTES.length) { restart(); return; }
+  modalShell('Restart the walkthrough?', `<div class="mb form"><p style="margin-top:0">This takes the investigation back to the ticket. You have ${plural(NOTES.length, 'note')} in your notebook: keep them, or clear them too?</p></div>`,
+    `<button class="btn" data-act="closeModal">Cancel</button><button class="btn" id="rsKeep" data-act="restartKeep">Restart, keep notes</button><button class="btn danger" id="rsClear" data-act="restartClear">Restart and clear notes</button>`, {kind:'restart'});
+}
+function toggleSort(st, key){ if (st.key === key) st.dir = st.dir === 'asc' ? 'desc' : 'asc'; else { st.key = key; st.dir = 'asc'; } }
+function effectiveTheme(){
+  const t = document.documentElement.getAttribute('data-theme');
+  if (t === 'dark' || t === 'light') return t;
+  return window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+function paintThemeBtn(){
+  const dark = effectiveTheme() === 'dark', b = $('#themebtn');
+  b.innerHTML = svg(dark ? IC.sun : IC.moon, 17, 1.9);
+  b.setAttribute('aria-label', dark ? 'Switch to light theme' : 'Switch to dark theme');
+  b.title = b.getAttribute('aria-label');
+}
+
 const ACTIONS = {
-  restart, closeModal,
-  search: openSearch, notifications: openNotifications, help: openHelp,
-  showguide: () => { S.coachOn = true; coach(); },
-  hideguide: () => { S.coachOn = false; coach(); $('#guidebtn').focus(); },
-  coachBack: () => { const i = ORDER.indexOf(S.screen); if (i > 0) go(ORDER[i-1]); },
-  coachDo: () => { if (coachAction) coachAction(); },
-  goto: el => { closeModal(); go(el.dataset.arg); },
-  runSql: runNow,
-  sqlTab: el => { S.sql.tab = el.dataset.arg === 'messages' ? 'messages' : 'results'; render(); },
-  topRows: el => { setSql(`SELECT TOP (1000) *\nFROM ${el.dataset.arg};`, 'custom'); runNow(); },
+  restart:requestRestart, closeModal,
+  restartKeep:restart,
+  restartClear:() => { NOTES = []; saveNotes(); paintBadge(); restart(); },
+  search:openSearch, notifications:openNotifications, help:openHelp, glossary:openGlossary, notes:() => openNotes(false),
+  theme:() => { const t = effectiveTheme() === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', t); store.set('theme', t); paintThemeBtn(); },
+  showguide:() => { S.coachOn = true; store.set('coachOn', true); coach(); },
+  hideguide:() => { S.coachOn = false; store.set('coachOn', false); coach(); $('#guidebtn').focus(); },
+  coachBack:() => { const i = ORDER.indexOf(S.screen); if (i > 0) go(ORDER[i-1]); },
+  coachDo:() => { if (coachAction) coachAction(); },
+  goto:el => { closeModal(); go(el.dataset.arg); },
+  pin:el => { const r = addNote(el.dataset.arg, S.screen); toast(NOTE_MSG[r], r === 'ok' || r === 'dup' ? '' : 'err'); if (modalKind() === 'notes') openNotes(); },
+  noteAdd:() => {
+    const r = addNote($('#noteNew').value, S.screen);
+    if (r === 'ok') { openNotes(); toast('Note added'); }
+    else { $('#noteErr').textContent = NOTE_MSG[r]; $('#noteNew').focus(); }
+  },
+  noteDel:el => { NOTES = NOTES.filter(n => n.id !== el.dataset.arg); saveNotes(); paintBadge(); openNotes(); toast('Note deleted'); },
+  notesExport:() => { if (!NOTES.length) return; download('INC-20418-notes.md', notesMarkdown(), 'text/markdown'); toast(`Exported ${plural(NOTES.length, 'note')}`); },
+  notesClear:() => openNotes(true),
+  notesClearCancel:() => openNotes(false),
+  notesClearYes:() => { NOTES = []; saveNotes(); paintBadge(); openNotes(); toast('All notes deleted'); },
+  jobRun:el => { if (el.dataset.arg) openJobRun(el.dataset.arg); },
+  pkg:el => openPkg(Number(el.dataset.arg), 'overview'),
+  pkgTab:el => openPkg(pkgView.k, el.dataset.arg),
+  sort:el => {
+    const [id, key] = String(el.dataset.arg).split(':');
+    if (id === 'agent' && has(AGENT_SORT, key)) toggleSort(S.hist.sort, key);
+    else if (id === 'ssis' && has(SSIS_SORT, key)) toggleSort(S.ssisX.sort, key);
+    else return;
+    render();
+  },
+  histClear:() => { S.hist.from = ''; S.hist.to = ''; render(); },
+  exportCsv:() => { const rows = agentRows(); download('job-history.csv', toCSV(AGENT_COLS, rows.map(agentRow)), 'text/csv'); toast(rows.length ? `Exported ${plural(rows.length, 'row')}` : 'Exported the header only: no rows match the filters'); },
+  runSql:runNow,
+  sqlTab:el => { curTab().tab = el.dataset.arg === 'messages' ? 'messages' : 'results'; render(); },
+  topRows:el => { setSql(`SELECT TOP (1000) *\nFROM ${el.dataset.arg};`, 'custom'); runNow(); },
+  oeToggle:el => { const k = el.dataset.arg; if (has(TABLES, k)) { S.sql.oe[k] = !S.sql.oe[k]; render(); } },
+  newTab:() => { if (newTab('', 'custom')) { render(); const ed = $('#editor'); if (ed) ed.focus(); } },
+  closeTab:el => {
+    const i = S.sql.tabs.findIndex(t => String(t.id) === el.dataset.arg);
+    if (i < 0) return;
+    S.sql.tabs.splice(i, 1);
+    if (!S.sql.tabs.length) { S.sql.tabs.push({id:++S.sql.seq, title:`SQLQuery${S.sql.seq}.sql`, text:'', preset:'custom', result:null, tab:'results'}); }
+    S.sql.active = Math.min(i <= S.sql.active ? Math.max(0, S.sql.active - 1) : S.sql.active, S.sql.tabs.length - 1);
+    render();
+  },
+  switchTab:el => { const i = S.sql.tabs.findIndex(t => String(t.id) === el.dataset.arg); if (i >= 0) { S.sql.active = i; render(); } },
+  textMode:() => { S.sql.textMode = !S.sql.textMode; render(); },
+  history:openHistory,
+  histLoad:el => { const e = S.sql.history[Number(el.dataset.arg)]; if (!e) return; closeModal(); setSql(e.text, 'custom'); render(); toast('Loaded into ' + curTab().title + '. Press F5 to run it.'); },
+  saveSql:() => { const t = curTab(); const ed = $('#editor'); if (ed) t.text = ed.value; download(t.title, t.text, 'text/plain'); toast('Saved ' + t.title); },
+  perfSwap:() => { const a = S.perf.a; S.perf.a = S.perf.b; S.perf.b = a; render(); },
+  perfReset:() => { Object.assign(S.perf, {c1:'lock', c2:'ple', a:LAST_LATE.iso, b:LAST_WED.iso}); render(); },
+  clearCauses:() => { S.diag.picked = []; S.diag.verdict = null; render(); },
+  undoFix:() => { S.fix = null; render(); toast('Schedule back to Sunday 00:30'); },
   submitDiag, editSchedule, saveSchedule
 };
 const BINDS = {
-  agentDay: el => setAgent({day: DAYS.includes(el.value) ? el.value : 'All'}),
-  agentLate: el => setAgent({lateOnly: el.checked}),
-  ssisDate: el => { if (NIGHTS.some(n => n.iso === el.value)) { S.ssis.date = el.value; if (el.value !== LAST_LATE.iso) S.ssis.compared = true; render(); } },
-  sqlPreset: el => { if (el.value === 'custom') S.sql.preset = 'custom'; else loadPreset(el.value); render(); },
-  cause: el => {
+  agentDay:el => setAgent({day:DAYS.includes(el.value) ? el.value : 'All'}),
+  agentLate:el => setAgent({lateOnly:el.checked}),
+  histFrom:el => { S.hist.from = /^\d{4}-\d{2}-\d{2}$/.test(el.value) ? el.value : ''; render(); },
+  histTo:el => { S.hist.to = /^\d{4}-\d{2}-\d{2}$/.test(el.value) ? el.value : ''; render(); },
+  ssisDate:el => { if (nightOf(el.value)) { S.ssis.date = el.value; if (el.value !== LAST_LATE.iso) S.ssis.compared = true; render(); } },
+  ssisSun:el => {
+    S.ssisX.sundaysOnly = el.checked;
+    const n = nightOf(S.ssis.date);
+    if (el.checked && n && !n.sunday) S.ssis.date = (SUNDAYS.filter(s => s.iso <= n.iso).slice(-1)[0] || SUNDAYS[0]).iso;
+    render();
+  },
+  sqlPreset:el => { if (el.value === 'custom') curTab().preset = 'custom'; else loadPreset(el.value); render(); },
+  perfCounter:el => { const slot = el.dataset.slot; if ((slot === 'c1' || slot === 'c2') && has(COUNTERS, el.value)) { S.perf[slot] = el.value; render(); } },
+  perfNight:el => { const slot = el.dataset.slot; if ((slot === 'a' || slot === 'b') && nightOf(el.value)) { S.perf[slot] = el.value; render(); } },
+  whatIf:el => { if (has(WHATIF, el.value)) { S.whatif = el.value; render(); const v = $('#whatifVerdict'); if (v) v.scrollIntoView({block:'nearest'}); } },
+  cause:el => {
     const k = el.value; if (!has(CAUSES, k)) return;
     S.diag.picked = el.checked ? [...new Set([...S.diag.picked, k])] : S.diag.picked.filter(x => x !== k);
     S.diag.verdict = null;
@@ -1186,9 +2092,11 @@ const BINDS = {
   }
 };
 const INPUTS = {
-  sqlText: el => { S.sql.text = el.value; if (S.sql.preset !== 'custom' && el.value !== TOOLKIT[S.sql.preset].sql) { S.sql.preset = 'custom'; const p = $('#preset'); if (p) p.value = 'custom'; } },
-  causeFilter: el => { S.diag.filter = el.value; $('#causes').innerHTML = causeList(); },
-  goSearch: el => paintSearch(el.value)
+  sqlText:el => { const t = curTab(); t.text = el.value; if (t.preset !== 'custom' && has(TOOLKIT, t.preset) && el.value !== TOOLKIT[t.preset].sql) { t.preset = 'custom'; const p = $('#preset'); if (p) p.value = 'custom'; } },
+  causeFilter:el => { S.diag.filter = el.value; $('#causes').innerHTML = causeList(); },
+  goSearch:el => paintSearch(el.value),
+  glossSearch:el => paintGlossary(el.value),
+  noteEdit:el => { const n = NOTES.find(x => x.id === el.dataset.id); if (n) { n.text = el.value.slice(0, NOTE_LEN); saveNotes(); } }
 };
 
 /* ============ router ============ */
@@ -1198,6 +2106,7 @@ function go(s){
   S.screen = s; S.visited[s] = true;
   try { history.replaceState(null, '', '#' + s); } catch (e) { /* file:// in some browsers */ }
   render();
+  $('#screen').scrollTop = 0;
   const h = $('#screen h1'); if (h) h.focus({preventScroll:true});
 }
 function render(){
@@ -1213,7 +2122,7 @@ function render(){
       <div class="row" style="margin-top:14px"><button class="btn primary" data-act="restart">Restart demo</button></div></div></div>`;
     toast('Something went wrong drawing this step. Restart the demo to continue.', 'err');
   }
-  sc.scrollTop = 0; untip();
+  untip();
   if (aid) { const el = document.getElementById(aid); if (el && el !== document.activeElement) el.focus({preventScroll:true}); }
 }
 
@@ -1221,9 +2130,9 @@ function render(){
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-act],[data-go]');
   if (!el || el.disabled) return;
-  if (el.dataset.go) { e.preventDefault(); go(el.dataset.go); return; }
+  if (el.dataset.go) { e.preventDefault(); if (modalKind()) closeModal(); go(el.dataset.go); return; }
   const fn = ACTIONS[el.dataset.act];
-  if (fn) fn(el, e);
+  if (fn) { untip(); fn(el, e); }
 });
 document.addEventListener('change', e => { const f = BINDS[e.target.dataset && e.target.dataset.bind]; if (f) f(e.target); });
 document.addEventListener('input', e => { const f = INPUTS[e.target.dataset && e.target.dataset.input]; if (f) f(e.target); });
@@ -1234,15 +2143,20 @@ document.addEventListener('keydown', e => {
   const modalOn = $('#modal').classList.contains('on');
   if (e.key === 'Escape') { if (modalOn) { e.preventDefault(); closeModal(); } return; }
   if (modalOn && e.key === 'Tab') {            // keep focus inside the dialog
-    const f = $$('#modal button, #modal input, #modal select').filter(x => !x.disabled);
+    const f = $$('#modal button, #modal input, #modal select, #modal textarea').filter(x => !x.disabled);
     if (!f.length) return;
     if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length-1].focus(); }
     else if (!e.shiftKey && document.activeElement === f[f.length-1]) { e.preventDefault(); f[0].focus(); }
     return;
   }
   if (modalOn && e.key === 'Enter' && e.target.id === 's_time') { e.preventDefault(); saveSchedule(); return; }
+  if (modalOn && e.key === 'Enter' && (e.ctrlKey || e.metaKey) && e.target.id === 'noteNew') { e.preventDefault(); ACTIONS.noteAdd(); return; }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); if (!modalOn) openSearch(); return; }
   if (S.screen === 'sql' && !modalOn && (e.key === 'F5' || ((e.ctrlKey || e.metaKey) && e.key === 'Enter'))) { e.preventDefault(); runNow(); return; }
+  if (!modalOn && !isTyping(e.target) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (e.key === '?') { e.preventDefault(); openHelp(); return; }
+    if (e.key === 'n' || e.key === 'N') { e.preventDefault(); openNotes(false); return; }
+  }
   if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('a[data-go]')) { e.preventDefault(); go(e.target.dataset.go); }
 });
 let resizeT = 0, lastW = innerWidth;
@@ -1251,6 +2165,8 @@ window.addEventListener('resize', () => {
   resizeT = setTimeout(() => { if (innerWidth !== lastW) { lastW = innerWidth; if (!$('#modal').classList.contains('on') && S.screen !== 'sql') render(); } }, 150);
 });
 window.addEventListener('hashchange', () => { const h = decodeHash(); if (h !== S.screen) go(h); });
+window.addEventListener('storage', e => { if (e.key === 'mss.notes') { NOTES = loadNotes(); paintBadge(); if (modalKind() === 'notes') openNotes(); } });
+if (window.matchMedia) { const mq = matchMedia('(prefers-color-scheme: dark)'); if (mq.addEventListener) mq.addEventListener('change', paintThemeBtn); }
 window.addEventListener('error', e => toast('Something went wrong: ' + (e.message || 'unknown error') + '. Restart the demo if the screen looks wrong.', 'err'));
 window.addEventListener('unhandledrejection', e => toast('Something went wrong: ' + ((e.reason && e.reason.message) || e.reason || 'unknown error') + '.', 'err'));
 function decodeHash(){
@@ -1261,12 +2177,22 @@ function decodeHash(){
 
 /* read-only handle for tests and the curious */
 window.MSS = Object.freeze({
-  get state(){ return JSON.parse(JSON.stringify(S)); },
+  get state(){
+    const c = JSON.parse(JSON.stringify(S)), t = c.sql.tabs[c.sql.active] || c.sql.tabs[0];
+    c.sql = Object.assign({text:t.text, preset:t.preset, result:t.result, tab:t.tab}, {seen:c.sql.seen}, {tabs:c.sql.tabs.length, history:c.sql.history.length, textMode:c.sql.textMode});
+    return c;
+  },
   nights: NIGHTS.map(n => ({iso:n.iso, wd:n.wd, end:n.end, late:n.late, overlap:n.overlap})),
   afterFix: AFTER_FIX.map(n => ({iso:n.iso, end:n.end, late:n.late})),
-  change: CHANGE, causes: Object.keys(CAUSES), runSql, scheduleProblem, order: ORDER.slice()
+  change: CHANGE, causes: Object.keys(CAUSES), order: ORDER.slice(),
+  runSql, scheduleProblem,
+  query: src => { const r = runSql(src); return {error:r.error, cols:r.cols, rows:r.rows, messages:r.msgs.map(m => m.text)}; },
+  whatIf: k => { const w = whatIf(k); return w && {verdict:w.verdict, late:w.late, ends:w.runs.map(r => r.end)}; },
+  notes: () => NOTES.map(n => Object.assign({}, n)),
+  storage: store.ok
 });
 
+paintThemeBtn();
 go(decodeHash());
 </script>
 </body>
